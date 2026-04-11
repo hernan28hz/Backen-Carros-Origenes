@@ -1,0 +1,118 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  OPERADOR
+}
+
+enum VehicleStatusType {
+  REGISTERED
+  AVAILABLE
+  IN_MAINTENANCE
+  OUT_OF_SERVICE
+  SOLD
+}
+
+model User {
+  id            String                 @id @default(cuid())
+  name          String
+  email         String                 @unique
+  passwordHash  String
+  role          Role                   @default(OPERADOR)
+  isActive      Boolean                @default(true)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  vehicles      Vehicle[]              @relation("VehicleCreator")
+  statusUpdates VehicleStatusHistory[] @relation("StatusUpdater")
+  adminUpdates  VehicleAdminHistory[]  @relation("VehicleAdminUpdater")
+  photos        VehiclePhoto[]         @relation("PhotoUploader")
+}
+
+model Vehicle {
+  id            String                 @id @default(cuid())
+  plate         String                 @unique
+  vin           String?                @unique
+  brand         String
+  model         String
+  year          Int
+  currentStatus VehicleStatusType      @default(AVAILABLE)
+  assignedOperator String?
+  observations  String?
+  soatExpiry    DateTime?
+  tecnomecanicaExpiry DateTime?
+  vehicleTaxExpiry DateTime?
+  pendingProcedures String?
+  fines         String?
+  createdById   String
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  createdBy     User                   @relation("VehicleCreator", fields: [createdById], references: [id])
+  statusHistory VehicleStatusHistory[]
+  adminHistory  VehicleAdminHistory[]
+  photos        VehiclePhoto[]
+
+  @@index([plate])
+  @@index([createdById])
+  @@index([currentStatus])
+}
+
+model VehicleStatusHistory {
+  id          String            @id @default(cuid())
+  vehicleId   String
+  statusType  VehicleStatusType
+  description String?
+  date        DateTime          @default(now())
+  updatedById String
+  createdAt   DateTime          @default(now())
+  vehicle     Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  updatedBy   User              @relation("StatusUpdater", fields: [updatedById], references: [id])
+
+  @@index([vehicleId])
+  @@index([updatedById])
+  @@index([statusType])
+}
+
+model VehiclePhoto {
+  id          String   @id @default(cuid())
+  vehicleId   String
+  url         String
+  fileName    String
+  mimeType    String
+  size        Int
+  description String?
+  uploadedById String
+  createdAt   DateTime @default(now())
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  uploadedBy  User     @relation("PhotoUploader", fields: [uploadedById], references: [id])
+
+  @@index([vehicleId])
+  @@index([uploadedById])
+}
+
+model VehicleAdminHistory {
+  id          String   @id @default(cuid())
+  vehicleId    String
+  field       String
+  oldValue    String?
+  newValue    String?
+  updatedById String
+  createdAt   DateTime @default(now())
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  updatedBy   User     @relation("VehicleAdminUpdater", fields: [updatedById], references: [id])
+
+  @@index([vehicleId])
+  @@index([updatedById])
+  @@index([createdAt])
+}

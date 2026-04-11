@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Origenes Fleet</title>
+    <meta
+      name="description"
+      content="Origenes Fleet es la plataforma para consultar y gestionar el inventario de vehiculos de la flota."
+    />
+    <link rel="icon" type="image/png" href="/media/iconbgblanco.png" />
+    <link rel="apple-touch-icon" href="/media/iconbgblanco.png" />
+    <meta property="og:locale" content="es_CO" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Origenes Fleet" />
+    <meta
+      property="og:description"
+      content="Origenes Fleet es la plataforma para consultar y gestionar el inventario de vehiculos de la flota."
+    />
+    <meta property="og:image" content="/media/IconoInst.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Origenes Fleet" />
+    <meta
+      name="twitter:description"
+      content="Origenes Fleet es la plataforma para consultar y gestionar el inventario de vehiculos de la flota."
+    />
+    <meta name="twitter:image" content="/media/IconoInst.jpg" />
+    <link rel="stylesheet" href="/styles.css?v=1.5" />
+  </head>
+  <body>
+    <div id="pullToRefreshIndicator" class="pull-refresh-indicator" aria-live="polite">
+      <span id="pullToRefreshLabel">Desliza hacia abajo para actualizar</span>
+    </div>
+    <button id="mobileSidebarButton" class="mobile-sidebar-button" type="button" aria-label="Abrir menu">
+      <span class="mobile-sidebar-button-icon">☰</span>
+    </button>
+    <div id="mobileSidebarBackdrop" class="mobile-sidebar-backdrop hidden"></div>
+    <div id="appShell" class="app-shell">
+      <aside id="sidebar" class="sidebar expanded">
+        <div class="sidebar-top">
+          <div class="sidebar-brand">
+            <button id="sidebarToggleButton" class="icon-button sidebar-toggle-brand" type="button" aria-label="Colapsar menu">
+              <img class="toggle-logo-image" src="/media/IconoInst.jpg" alt="Icono menu" />
+            </button>
+            <div class="sidebar-brand-text">
+              <p id="sidebarBrandKicker" class="brand-kicker">Navegacion</p>
+              <strong id="sidebarBrandTitle">Origenes Fleet</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-middle">
+          <p id="sidebarSectionLabel" class="sidebar-section-label">Principal</p>
+          <nav id="sidebarNav" class="sidebar-nav"></nav>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="sidebar-divider"></div>
+          <span id="sidebarRoleBadge" class="status-pill neutral">Visitante</span>
+          <div id="sidebarUserCard" class="sidebar-user-card hidden">
+            <div id="sidebarUserAvatar" class="sidebar-user-avatar">OF</div>
+            <div class="sidebar-user-info">
+              <strong id="sidebarUserName">Visitante</strong>
+              <span id="sidebarUserMeta">Navegacion publica</span>
+            </div>
+          </div>
+          <button id="sidebarLogoutButton" class="sidebar-logout hidden" type="button">Cerrar sesion</button>
+        </div>
+      </aside>
+
+      <div class="app-content">
+        <header class="app-topbar">
+          <div class="app-topbar-left">
+            <button id="topbarMenuButton" class="icon-button" type="button" aria-label="Abrir menu">|||</button>
+            <div>
+              <p id="pageKicker" class="section-kicker">Publico</p>
+              <h2 id="pageTitle">Inicio</h2>
+            </div>
+          </div>
+
+          <div class="app-topbar-right">
+            <span id="apiStatusBadge" class="status-pill neutral">API verificando</span>
+            <button id="authShortcutButton" class="button button-secondary" type="button">Iniciar sesion</button>
+          </div>
+        </header>
+
+        <main class="app-main">
+          <section id="homePage" class="route-page hidden">
+            <div id="homeCatalogPreview" class="public-vehicle-grid"></div>
+          </section>
+
+          <section id="catalogPage" class="route-page hidden">
+            <section class="section-block">
+              <article class="card hero-card-main">
+                <p class="section-kicker">Sistema de gestion</p>
+                <h2>Flota de Vehiculos.</h2>
+                <p class="hero-copy">El catalogo muestra los vehiculos disponibles para consulta general.</p>
+              </article>
+
+              <div class="catalog-analytics">
+                <article class="card catalog-status-card">
+                  <div class="catalog-donut-wrap">
+                    <div id="catalogDonutChart" class="catalog-donut-chart">
+                      <div class="catalog-donut-hole">
+                        <strong id="catalogDonutTotal">0</strong>
+                        <span>unidades</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="catalogStatusViz" class="catalog-status-list"></div>
+                </article>
+
+                <article class="card catalog-hero-metric">
+                  <p class="section-kicker">Vision general</p>
+                  <div class="catalog-hero-number">
+                    <strong id="homePublicCount">0</strong>
+                    <span>vehiculos visibles</span>
+                  </div>
+                  <div id="catalogOverviewStats" class="catalog-mini-stats"></div>
+                </article>
+              </div>
+
+              <div id="publicCatalogGrid" class="public-vehicle-grid"></div>
+
+              <div class="section-header">
+                <div>
+                  <p class="section-kicker">Catalogo publico</p>
+                  <h2>Vehiculos visibles</h2>
+                </div>
+
+                <div class="toolbar">
+                  <select id="publicStatusFilter">
+                    <option value="ALL">Todos los estados</option>
+                    <option value="AVAILABLE">Disponible</option>
+                    <option value="REGISTERED">En servicio</option>
+                    <option value="IN_MAINTENANCE">En mantenimiento</option>
+                    <option value="OUT_OF_SERVICE">Fuera de servicio</option>
+                    <option value="SOLD">Vendido</option>
+                  </select>
+                  <button id="refreshCatalogButton" class="button button-secondary" type="button">Actualizar</button>
+                </div>
+              </div>
+
+            </section>
+          </section>
+
+          <section id="loginPage" class="route-page hidden auth-page">
+            <article class="card auth-card">
+              <p class="section-kicker">Acceso seguro</p>
+              <h2>Inicia sesion</h2>
+              <p class="hero-copy">Usa tus credenciales para entrar al panel segun tu rol.</p>
+
+              <form id="loginForm" class="form-grid single-column">
+                <label>
+                  <span>Usuario</span>
+                  <input name="identifier" type="text" placeholder="Email o cedula" required />
+                </label>
+                <label>
+                  <span>Contraseña</span>
+                  <input name="password" type="password" placeholder="Contraseña" required />
+                </label>
+                <button class="button button-primary full-span" type="submit">Entrar al sistema</button>
+              </form>
+            </article>
+          </section>
+
+          <section id="dashboardPage" class="route-page hidden">
+            <div class="dashboard-grid">
+              <div class="dashboard-analytics">
+                <article class="card dashboard-status-card">
+                  <div class="section-header">
+                    <div>
+                      <p class="section-kicker">Panel principal</p>
+                      <h3>Estado de vehiculos</h3>
+                    </div>
+                  </div>
+                  <div class="dashboard-status-list">
+                    <article class="dashboard-status-item">
+                      <div class="dashboard-status-head">
+                        <div class="dashboard-status-label">
+                          <span class="dashboard-status-dot available"></span>
+                          <strong>Disponibles</strong>
+                        </div>
+                        <span id="dashboardAvailableLabel">0</span>
+                      </div>
+                      <div class="dashboard-status-bar">
+                        <span id="dashboardAvailableBar" class="available"></span>
+                      </div>
+                    </article>
+
+                    <article class="dashboard-status-item">
+                      <div class="dashboard-status-head">
+                        <div class="dashboard-status-label">
+                          <span class="dashboard-status-dot service"></span>
+                          <strong>En servicio</strong>
+                        </div>
+                        <span id="dashboardServiceLabel">0</span>
+                      </div>
+                      <div class="dashboard-status-bar">
+                        <span id="dashboardServiceBar" class="service"></span>
+                      </div>
+                    </article>
+
+                    <article class="dashboard-status-item">
+                      <div class="dashboard-status-head">
+                        <div class="dashboard-status-label">
+                          <span class="dashboard-status-dot maintenance"></span>
+                          <strong>En mantenimiento</strong>
+                        </div>
+                        <span id="dashboardMaintenanceLabel">0</span>
+                      </div>
+                      <div class="dashboard-status-bar">
+                        <span id="dashboardMaintenanceBar" class="maintenance"></span>
+                      </div>
+                    </article>
+                  </div>
+                </article>
+              </div>
+
+              <article class="card">
+                <div class="section-header">
+                  <div>
+                    <p class="section-kicker">Vehiculos asignados</p>
+                    <h3>Acceso rapido a unidades visibles</h3>
+                  </div>
+                </div>
+                <div id="dashboardVehiclesList" class="private-vehicle-list"></div>
+              </article>
+            </div>
+          </section>
+
+          <section id="adminVehiclesPage" class="route-page hidden">
+            <article class="card">
+              <div id="privateVehiclesGrid" class="private-vehicle-list"></div>
+            </article>
+
+            <div class="section-header">
+              <div>
+                <p class="section-kicker">Gestion de vehiculos</p>
+                <h3>Inventario completo</h3>
+              </div>
+
+              <div class="toolbar">
+                <select id="privateStatusFilter">
+                  <option value="ALL">Todos los estados</option>
+                  <option value="AVAILABLE">Disponible</option>
+                  <option value="REGISTERED">En servicio</option>
+                  <option value="IN_MAINTENANCE">En mantenimiento</option>
+                  <option value="OUT_OF_SERVICE">Fuera de servicio</option>
+                  <option value="SOLD">Vendido</option>
+                </select>
+                <button id="refreshVehiclesButton" class="button button-secondary" type="button">Actualizar</button>
+              </div>
+            </div>
+          </section>
+
+          <section id="vehiclePage" class="route-page hidden">
+            <article class="card">
+              <div id="vehicleRouteContent" class="empty-panel">Cargando vehiculo...</div>
+            </article>
+          </section>
+
+          <section id="adminOperatorsPage" class="route-page hidden">
+            <div class="section-header">
+              <div>
+                <p class="section-kicker">Gestion de Usuarios</p>
+                <h3>Usuarios del sistema</h3>
+              </div>
+              <button id="refreshOperatorsButton" class="button button-secondary" type="button">Actualizar</button>
+            </div>
+
+            <div class="two-column-grid">
+              <article class="card">
+                <div class="section-header">
+                  <div>
+                    <p class="section-kicker">Crear usuario</p>
+                    <h3>Nuevo operador o admin</h3>
+                  </div>
+                </div>
+
+                <form id="userForm" class="form-grid">
+                  <label>
+                    <span>Nombre</span>
+                    <input name="name" required />
+                  </label>
+                  <label>
+                    <span>Email o cedula</span>
+                    <input name="identifier" required />
+                  </label>
+                  <label>
+                    <span>Contraseña</span>
+                    <input name="password" type="password" minlength="6" required />
+                  </label>
+                  <label>
+                    <span>Rol</span>
+                    <select name="role">
+                      <option value="OPERADOR">OPERADOR</option>
+                      <option value="ADMIN">ADMIN</option>
+                    </select>
+                  </label>
+                  <button class="button button-primary full-span" type="submit">Crear usuario</button>
+                </form>
+              </article>
+
+              <article class="card">
+                <div class="section-header">
+                  <div>
+                    <p class="section-kicker">Listado</p>
+                    <h3>Operadores registrados</h3>
+                  </div>
+                </div>
+                <div id="operatorsList" class="list-stack"></div>
+              </article>
+            </div>
+
+            <article id="administratorsSection" class="card hidden">
+              <div class="section-header">
+                <div>
+                  <p class="section-kicker">Control principal</p>
+                  <h3>Administradores registrados</h3>
+                </div>
+              </div>
+              <div id="administratorsList" class="list-stack"></div>
+            </article>
+          </section>
+
+          <section id="profilePage" class="route-page hidden">
+            <article class="card">
+              <div class="section-header">
+                <div>
+                  <p class="section-kicker">Perfil</p>
+                  <h3>Informacion del usuario</h3>
+                </div>
+              </div>
+              <div id="profileContent" class="detail-grid"></div>
+            </article>
+          </section>
+
+          <section id="adminMessagesPage" class="route-page hidden">
+            <article class="card">
+              <div class="section-header">
+                <div>
+                  <p class="section-kicker">Mensajes del sistema</p>
+                  <h3>Registro administrativo</h3>
+                </div>
+                <button id="clearAdminMessagesButton" class="button button-ghost" type="button">Limpiar</button>
+              </div>
+              <div id="adminMessagesList" class="list-stack"></div>
+            </article>
+          </section>
+
+          <section id="actionsPanel" class="route-page hidden">
+            <div class="two-column-grid">
+              <article class="card">
+                <div class="section-header">
+                  <div>
+                    <p class="section-kicker">Registro</p>
+                    <h3>Nuevo vehiculo</h3>
+                  </div>
+                </div>
+
+                <form id="vehicleForm" class="form-grid">
+                  <label>
+                    <span>Placa</span>
+                    <input name="plate" placeholder="ABC123" required />
+                  </label>
+                  <label>
+                    <span>VIN</span>
+                    <input name="vin" placeholder="Opcional" />
+                  </label>
+                  <label>
+                    <span>Marca</span>
+                    <input name="brand" placeholder="Toyota" required />
+                  </label>
+                  <label>
+                    <span>Modelo</span>
+                    <input name="model" placeholder="Corolla" required />
+                  </label>
+                  <label>
+                    <span>Operador asignado</span>
+                    <input name="assignedOperator" placeholder="Nombre del operador" />
+                  </label>
+                  <label>
+                    <span>Anio</span>
+                    <input name="year" type="number" min="1900" max="2100" value="2024" required />
+                  </label>
+                  <label>
+                    <span>Estado inicial</span>
+                    <select name="currentStatus">
+                      <option value="">Disponible</option>
+                      <option value="REGISTERED">En servicio</option>
+                      <option value="AVAILABLE">Disponible</option>
+                      <option value="IN_MAINTENANCE">En mantenimiento</option>
+                      <option value="OUT_OF_SERVICE">Fuera de servicio</option>
+                      <option value="SOLD">Vendido</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Imagen del vehiculo</span>
+                    <input name="photo" type="file" accept="image/*" />
+                  </label>
+                  <button class="button button-primary full-span" type="submit">Guardar vehiculo</button>
+                </form>
+              </article>
+
+              <article class="card">
+                <div class="section-header">
+                  <div>
+                    <p class="section-kicker">Guia</p>
+                    <h3>Uso del panel</h3>
+                  </div>
+                </div>
+                <ul class="feature-list compact">
+                  <li>Escribe la placa, marca, modelo y anio del vehiculo.</li>
+                  <li>Agrega el VIN solo si ya lo tienes disponible.</li>
+                  <li>Si quieres, selecciona una imagen antes de guardar el vehiculo.</li>
+                  <li>Selecciona el estado inicial y luego pulsa Guardar vehiculo.</li>
+                </ul>
+              </article>
+            </div>
+
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <template id="publicVehicleCardTemplate">
+      <article class="vehicle-card">
+        <button class="vehicle-card-button" type="button">
+          <div class="vehicle-image-wrap">
+            <img class="vehicle-image" alt="Vehiculo" />
+            <span class="status-pill vehicle-status-badge"></span>
+          </div>
+          <div class="vehicle-body">
+            <strong class="vehicle-plate"></strong>
+            <span class="vehicle-model"></span>
+            <span class="vehicle-operator"></span>
+            <span class="status-pill vehicle-card-status"></span>
+            <span class="vehicle-caption">Haz clic para ver mas</span>
+          </div>
+        </button>
+      </article>
+    </template>
+
+    <template id="privateVehicleItemTemplate">
+      <article class="list-card">
+        <div class="list-card-main">
+          <img class="list-card-thumb" alt="Vehiculo" />
+          <div>
+            <strong class="list-card-title"></strong>
+            <span class="list-card-subtitle"></span>
+          </div>
+        </div>
+        <div class="list-card-meta">
+          <span class="status-pill list-card-status"></span>
+          <button class="button button-secondary detail-button" type="button">Ver informacion</button>
+          <button class="button button-primary edit-info-button hidden" type="button">Editar informacion</button>
+          <button class="button button-ghost delete-button hidden" type="button">Eliminar</button>
+        </div>
+      </article>
+    </template>
+
+    <template id="operatorItemTemplate">
+      <article class="list-card">
+        <div class="list-card-main">
+          <div class="avatar-chip operator-avatar"></div>
+          <div>
+            <strong class="operator-name"></strong>
+            <span class="operator-email"></span>
+          </div>
+        </div>
+        <div class="list-card-meta">
+          <span class="status-pill operator-role"></span>
+          <button class="button button-ghost operator-delete-button" type="button">Eliminar</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="/app.js" defer></script>
+  </body>
+  </html>

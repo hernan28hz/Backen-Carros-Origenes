@@ -1,0 +1,26 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Archivos locales del editor
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Archivos subidos en runtime
+uploads/*
+!uploads/.gitkeep
+
+# Prisma local
+prisma/dev.db
+prisma/dev.db-journal
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
