@@ -42,11 +42,13 @@ app.use(
   express.static(publicStaticPath, {
     etag: false,
     lastModified: false,
-    maxAge: 0,
-    setHeaders: (res) => {
-      setNoCacheHeaders(res);
-      res.removeHeader("ETag");
-      res.removeHeader("Last-Modified");
+    maxAge: "1d",
+    setHeaders: (res, path) => {
+      if (path.endsWith(".html")) {
+        setNoCacheHeaders(res);
+        res.removeHeader("ETag");
+        res.removeHeader("Last-Modified");
+      }
     },
   })
 );
@@ -55,26 +57,16 @@ app.use(
   express.static(uploadsStaticPath, {
     etag: false,
     lastModified: false,
-    maxAge: 0,
+    maxAge: "1d",
     setHeaders: (res) => {
-      setNoCacheHeaders(res);
       res.removeHeader("ETag");
       res.removeHeader("Last-Modified");
     },
   })
 );
 
-app.get("/health", async (_req, res) => {
-  try {
-    await prisma.$queryRawUnsafe("SELECT 1");
-    res.status(200).json({ status: "ok", database: "ok" });
-  } catch (error) {
-    res.status(500).json({
-      status: "error",
-      database: "error",
-      message: error.message,
-    });
-  }
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
 });
 
 app.use("/catalog", catalogRoutes);

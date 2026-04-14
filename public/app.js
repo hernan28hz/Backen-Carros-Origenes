@@ -608,7 +608,7 @@ function scheduleRefreshInterval() {
   clearInterval(state.refreshTimers.intervalId);
   state.refreshTimers.intervalId = window.setInterval(() => {
     refreshActiveView({ silent: true, reason: "interval" });
-  }, 25000);
+  }, 36000000); // 10 horas
 }
 
 function shouldRefreshCurrentRoute() {
