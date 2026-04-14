@@ -7,9 +7,6 @@ const { isPrimaryAdmin } = require("../../utils/adminAccess");
 
 const createUser = asyncHandler(async (req, res) => {
   const { name, identifier, password, role } = req.body;
-  if (role === "ADMIN" && !isPrimaryAdmin(req.user)) {
-    throw new ApiError(403, "Solo el administrador principal puede crear administradores");
-  }
 
   const passwordHash = await bcrypt.hash(password, 10);
   const normalizedIdentifier = normalizeIdentifier(identifier);
@@ -93,10 +90,6 @@ const updateUser = asyncHandler(async (req, res) => {
 
   if (!existingUser) {
     throw new ApiError(404, "Usuario no encontrado");
-  }
-
-  if (existingUser.role === "ADMIN" && !isPrimaryAdmin(req.user)) {
-    throw new ApiError(403, "Solo el administrador principal puede editar administradores");
   }
 
   if (req.user.id === existingUser.id && req.body.isActive === false) {

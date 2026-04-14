@@ -769,10 +769,7 @@ function renderOperatorsPage() {
   const userRoleSelect = elements.userForm.querySelector('[name="role"]');
   const adminRoleOption = userRoleSelect?.querySelector('option[value="ADMIN"]');
   if (adminRoleOption) {
-    adminRoleOption.disabled = !isPrimaryAdminUser();
-    if (!isPrimaryAdminUser() && userRoleSelect.value === "ADMIN") {
-      userRoleSelect.value = "OPERADOR";
-    }
+    adminRoleOption.disabled = false;
   }
 
   elements.administratorsSection.classList.toggle("hidden", !isPrimaryAdminUser());
