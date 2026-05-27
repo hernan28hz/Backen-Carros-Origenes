@@ -29,6 +29,8 @@ model User {
   id            String                 @id @default(cuid())
   name          String
   email         String                 @unique
+  contactEmail  String?                @unique
+  contactEmailVerified Boolean          @default(false)
   passwordHash  String
   role          Role                   @default(OPERADOR)
   isActive      Boolean                @default(true)
@@ -38,6 +40,23 @@ model User {
   statusUpdates VehicleStatusHistory[] @relation("StatusUpdater")
   adminUpdates  VehicleAdminHistory[]  @relation("VehicleAdminUpdater")
   photos        VehiclePhoto[]         @relation("PhotoUploader")
+  emailVerification EmailVerification?
+  complianceNotifications VehicleComplianceNotification[]
+}
+
+model EmailVerification {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  email       String
+  codeHash    String
+  expiresAt   DateTime
+  lastSentAt  DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([expiresAt])
 }
 
 model Vehicle {
@@ -62,10 +81,28 @@ model Vehicle {
   statusHistory VehicleStatusHistory[]
   adminHistory  VehicleAdminHistory[]
   photos        VehiclePhoto[]
+  complianceNotifications VehicleComplianceNotification[]
 
   @@index([plate])
   @@index([createdById])
   @@index([currentStatus])
+}
+
+model VehicleComplianceNotification {
+  id          String   @id @default(cuid())
+  vehicleId   String
+  userId      String
+  documentType String
+  alertType   String
+  expiryDate  DateTime
+  sentAt      DateTime @default(now())
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, userId, documentType, alertType, expiryDate])
+  @@index([vehicleId])
+  @@index([userId])
+  @@index([sentAt])
 }
 
 model VehicleStatusHistory {

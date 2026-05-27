@@ -12,6 +12,15 @@ const login = asyncHandler(async (req, res) => {
 
   const user = await prisma.user.findUnique({
     where: { email: normalizedIdentifier },
+    include: {
+      emailVerification: {
+        select: {
+          email: true,
+          expiresAt: true,
+          lastSentAt: true,
+        },
+      },
+    },
   });
 
   if (!user || !user.isActive) {
@@ -34,6 +43,11 @@ const login = asyncHandler(async (req, res) => {
       id: user.id,
       name: user.name,
       email: user.email,
+      contactEmail: user.contactEmail,
+      contactEmailVerified: user.contactEmailVerified,
+      pendingContactEmail: user.emailVerification?.email || null,
+      emailVerificationExpiresAt: user.emailVerification?.expiresAt || null,
+      emailVerificationLastSentAt: user.emailVerification?.lastSentAt || null,
       role: user.role,
     },
   });

@@ -39,8 +39,30 @@ const updateUserSchema = z.object({
   query: z.object({}).optional().default({}),
 });
 
+const requestCurrentUserEmailVerificationSchema = z.object({
+  body: z.object({
+    contactEmail: z.string().trim().email({
+      message: "Debe ser un correo electronico valido",
+    }),
+  }),
+  params: z.object({}).optional().default({}),
+  query: z.object({}).optional().default({}),
+});
+
+const confirmCurrentUserEmailVerificationSchema = z.object({
+  body: z.object({
+    code: z.string().trim().regex(/^[0-9]{4}$/, {
+      message: "El codigo debe tener 4 digitos",
+    }),
+  }),
+  params: z.object({}).optional().default({}),
+  query: z.object({}).optional().default({}),
+});
+
 module.exports = {
   createUserSchema,
   userIdSchema,
   updateUserSchema,
+  requestCurrentUserEmailVerificationSchema,
+  confirmCurrentUserEmailVerificationSchema,
 };

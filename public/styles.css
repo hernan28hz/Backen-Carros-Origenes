@@ -1104,6 +1104,14 @@ select {
   gap: var(--space-3);
 }
 
+.list-subsection {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
 .list-card {
   justify-content: space-between;
   padding: var(--space-4);
@@ -1181,6 +1189,43 @@ select {
 
 .detail-grid article.detail-row-neutral {
   background: #f3f6fa;
+}
+
+.profile-email-card {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
+  gap: var(--space-4);
+  align-items: end;
+}
+
+.profile-email-heading,
+.profile-email-actions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.profile-email-heading {
+  grid-template-columns: minmax(0, max-content) auto;
+  align-items: center;
+  justify-content: start;
+}
+
+.profile-email-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.profile-email-form input {
+  width: 100%;
+}
+
+.profile-email-note,
+.profile-email-card small {
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 .vehicle-detail-layout {
@@ -1448,6 +1493,12 @@ select {
   .detail-mode-summary .detail-row {
     grid-template-columns: auto minmax(0, 1fr);
     gap: 6px 10px;
+  }
+
+  .profile-email-card,
+  .profile-email-form,
+  .profile-email-heading {
+    grid-template-columns: 1fr;
   }
 
   .detail-row strong,

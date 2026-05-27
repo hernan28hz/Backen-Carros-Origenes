@@ -21,14 +21,35 @@ const authMiddleware = asyncHandler(async (req, _res, next) => {
 
   const user = await prisma.user.findUnique({
     where: { id: payload.sub },
-    select: { id: true, name: true, email: true, role: true, isActive: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      contactEmail: true,
+      contactEmailVerified: true,
+      role: true,
+      isActive: true,
+      emailVerification: {
+        select: {
+          email: true,
+          expiresAt: true,
+          lastSentAt: true,
+        },
+      },
+    },
   });
 
   if (!user || !user.isActive) {
     throw new ApiError(401, "User not authorized");
   }
 
-  req.user = user;
+  const { emailVerification, ...safeUser } = user;
+  req.user = {
+    ...safeUser,
+    pendingContactEmail: emailVerification?.email || null,
+    emailVerificationExpiresAt: emailVerification?.expiresAt || null,
+    emailVerificationLastSentAt: emailVerification?.lastSentAt || null,
+  };
   next();
 });
 

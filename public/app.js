@@ -83,6 +83,7 @@ const state = {
     active: false,
     refreshing: false,
   },
+  profileEmailCooldownTimer: null,
 };
 
 const elements = {
@@ -543,7 +544,23 @@ async function loadPublicCatalog(options = {}) {
 
 async function loadPrivateData() {
   if (!state.token) return;
-  await Promise.all([loadPrivateVehicles(), loadOperators(), loadAdministrators()]);
+  await Promise.all([loadCurrentUser(), loadPrivateVehicles(), loadOperators(), loadAdministrators()]);
+}
+
+async function loadCurrentUser(options = {}) {
+  const { silent = true } = options;
+  if (!state.token) return;
+
+  try {
+    const user = await apiFetch("/users/me");
+    state.user = user;
+    localStorage.setItem("fleet_user", JSON.stringify(state.user));
+    renderCurrentRoute();
+  } catch (error) {
+    if (!silent) {
+      pushToast("error", error.message);
+    }
+  }
 }
 
 async function loadPrivateVehicles(options = {}) {
@@ -824,12 +841,95 @@ function renderOperatorsPage() {
 }
 
 function renderProfilePage() {
+  const contactEmail = state.user.contactEmail || "";
+  const pendingEmail = state.user.pendingContactEmail || "";
+  const isVerified = Boolean(contactEmail && state.user.contactEmailVerified);
+  const emailStatus = getProfileEmailStatus();
+  const emailLabel = pendingEmail || contactEmail || "Sin correo registrado";
+  const requestEmailValue = pendingEmail || contactEmail;
+
   elements.profileContent.innerHTML = `
     <article><strong>Nombre</strong><span>${escapeHtml(state.user.name)}</span></article>
     <article><strong>Usuario</strong><span>${escapeHtml(state.user.email)}</span></article>
     <article><strong>Rol</strong><span>${escapeHtml(state.user.role)}</span></article>
     <article><strong>Sesion</strong><span>Activa en esta aplicacion</span></article>
+    <article class="profile-email-card">
+      <div>
+        <div class="profile-email-heading">
+          <strong>Correo electronico</strong>
+          <span class="status-pill ${emailStatus.className}">${emailStatus.label}</span>
+        </div>
+        <span>${escapeHtml(emailLabel)}</span>
+      </div>
+      <div class="profile-email-actions">
+        <form id="profileEmailRequestForm" class="profile-email-form">
+          <input name="contactEmail" type="email" value="${escapeHtml(requestEmailValue)}" placeholder="correo@empresa.com" required />
+          <button id="profileEmailRequestButton" class="button button-primary" type="submit">${pendingEmail ? "Reenviar codigo" : isVerified ? "Cambiar correo" : "Enviar codigo"}</button>
+        </form>
+        ${
+          pendingEmail
+            ? `<form id="profileEmailConfirmForm" class="profile-email-form">
+                <input name="code" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="Codigo de 4 digitos" required />
+                <button class="button button-secondary" type="submit">Verificar</button>
+              </form>`
+            : ""
+        }
+      </div>
+    </article>
   `;
+
+  const requestForm = document.getElementById("profileEmailRequestForm");
+  if (requestForm) {
+    requestForm.addEventListener("submit", handleRequestProfileEmailVerification);
+  }
+  const confirmForm = document.getElementById("profileEmailConfirmForm");
+  if (confirmForm) {
+    confirmForm.addEventListener("submit", handleConfirmProfileEmailVerification);
+  }
+  startProfileEmailCooldownTimer();
+}
+
+function getProfileEmailStatus() {
+  if (state.user?.pendingContactEmail || (state.user?.contactEmail && !state.user?.contactEmailVerified)) {
+    return { label: "Pendiente de verificacion", className: "service" };
+  }
+
+  if (state.user?.contactEmail && state.user?.contactEmailVerified) {
+    return { label: "Verificado", className: "available" };
+  }
+
+  return { label: "Sin registrar", className: "neutral" };
+}
+
+function getProfileEmailCooldownSeconds() {
+  if (!state.user?.emailVerificationLastSentAt) return 0;
+
+  const lastSentAt = new Date(state.user.emailVerificationLastSentAt).getTime();
+  if (Number.isNaN(lastSentAt)) return 0;
+
+  return Math.max(0, Math.ceil((60000 - (Date.now() - lastSentAt)) / 1000));
+}
+
+function startProfileEmailCooldownTimer() {
+  clearInterval(state.profileEmailCooldownTimer);
+
+  const updateCooldown = () => {
+    const requestButton = document.getElementById("profileEmailRequestButton");
+    if (!requestButton) return;
+
+    const seconds = getProfileEmailCooldownSeconds();
+    requestButton.disabled = seconds > 0;
+
+    if (seconds <= 0) {
+      clearInterval(state.profileEmailCooldownTimer);
+      state.profileEmailCooldownTimer = null;
+    }
+  };
+
+  updateCooldown();
+  if (getProfileEmailCooldownSeconds() > 0) {
+    state.profileEmailCooldownTimer = window.setInterval(updateCooldown, 1000);
+  }
 }
 
 function renderAdminMessages() {
@@ -1561,6 +1661,62 @@ async function handleCreateUser(event) {
   } catch (error) {
     pushToast("error", error.message);
     addSystemMessage("error", "Fallo al crear usuario", error.message);
+  }
+}
+
+async function handleRequestProfileEmailVerification(event) {
+  event.preventDefault();
+  if (!state.token) return;
+
+  const formElement = event.currentTarget;
+  const form = new FormData(formElement);
+  const submitButton = formElement.querySelector('button[type="submit"]');
+
+  setButtonLoading(submitButton, true, "Enviando...");
+
+  try {
+    const response = await apiFetch("/users/me/email-verification/request", {
+      method: "POST",
+      body: JSON.stringify({
+        contactEmail: String(form.get("contactEmail") || "").trim(),
+      }),
+    });
+
+    state.user = response.user;
+    localStorage.setItem("fleet_user", JSON.stringify(state.user));
+    renderCurrentRoute();
+    pushToast("success", response.message || "Codigo enviado correctamente.");
+  } catch (error) {
+    setButtonLoading(submitButton, false);
+    pushToast("error", error.message);
+  }
+}
+
+async function handleConfirmProfileEmailVerification(event) {
+  event.preventDefault();
+  if (!state.token) return;
+
+  const formElement = event.currentTarget;
+  const form = new FormData(formElement);
+  const submitButton = formElement.querySelector('button[type="submit"]');
+
+  setButtonLoading(submitButton, true, "Verificando...");
+
+  try {
+    const response = await apiFetch("/users/me/email-verification/confirm", {
+      method: "POST",
+      body: JSON.stringify({
+        code: String(form.get("code") || "").trim(),
+      }),
+    });
+
+    state.user = response.user;
+    localStorage.setItem("fleet_user", JSON.stringify(state.user));
+    renderCurrentRoute();
+    pushToast("success", response.message || "Correo verificado correctamente.");
+  } catch (error) {
+    setButtonLoading(submitButton, false);
+    pushToast("error", error.message);
   }
 }
 

@@ -1,41 +1,16 @@
 # Despliegue en Hostinger
 
-Esta aplicacion es un backend Node.js + Express + Prisma + MySQL. No debe subirse como sitio estatico normal.
+Esta app usa Node.js + Express + Prisma y necesita una base de datos MySQL remota.
 
-## 1. Verifica tu plan
+## Pasos rápidos
 
-Necesitas uno de estos escenarios:
+1. Crea la base de datos y el usuario en Hostinger.
+2. Autoriza tu IP para conexión remota si quieres usarla desde tu PC.
+3. Configura variables de entorno en Hostinger y/o en tu `.env` local.
 
-- `Business` o `Cloud` con soporte para `Node.js Web App`
-- `VPS` si quieres control manual total
+Variables necesarias:
 
-Si tu plan solo admite HTML/PHP estatico, este backend no va a correr ahi.
-
-## 2. Prepara la base de datos en Hostinger
-
-En hPanel:
-
-1. Entra a `Websites`.
-2. Abre el sitio donde vivira la app.
-3. Ve a `Databases Management`.
-4. Crea una base de datos MySQL y un usuario.
-5. Guarda estos datos:
-   - nombre de la base
-   - usuario
-   - password
-   - host
-   - puerto
-
-Notas:
-
-- Si la app corre dentro de Hostinger, normalmente el host sera `localhost`.
-- Si conectas desde fuera de Hostinger, normalmente usara host remoto y puerto `3306`.
-
-## 3. Configura variables de entorno
-
-En Hostinger configura estas variables:
-
-- `DATABASE_URL`
+- `DATABASE_URL` (MySQL remoto)
 - `PORT`
 - `NODE_ENV`
 - `JWT_SECRET`
@@ -44,22 +19,18 @@ En Hostinger configura estas variables:
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 
-Ejemplo de `DATABASE_URL`:
-
+Ejemplo:
 ```env
-DATABASE_URL="mysql://USUARIO:CLAVE@localhost:3306/NOMBRE_BD"
+DATABASE_URL="mysql://usuario:clave@srv1665.hstgr.io:3306/u122249446_bdCarros17"
+PORT=3000
+NODE_ENV=production
+JWT_SECRET=tu_clave_secreta
+JWT_EXPIRES_IN=8h
 ```
 
-Si Hostinger te da un host remoto, cambia `localhost` por ese valor.
+## Subir el proyecto
 
-## 4. Sube el proyecto
-
-Tienes dos formas recomendadas:
-
-- Conectar repositorio GitHub a Hostinger
-- Subir un `.zip` del proyecto
-
-Debes incluir:
+Incluye en el deploy:
 
 - `src/`
 - `public/`
@@ -72,12 +43,13 @@ No subas:
 - `node_modules/`
 - `.env`
 
-## 5. Configuracion de arranque
-
-La app ya esta lista para arrancar con:
+## Arrancar
 
 ```bash
 npm start
+```
+
+La app debe usar la base remota definida en `DATABASE_URL`.
 ```
 
 Hostinger debe detectar:

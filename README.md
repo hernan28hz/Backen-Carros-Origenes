@@ -95,48 +95,24 @@ npm install
 ```
 
 ### 2. Configurar variables de entorno
-Crear archivo `.env` en la raíz del proyecto:
+Crear archivo `.env` en la raíz del proyecto con tus datos remotos:
 ```env
-# Base de datos
-DATABASE_URL="mysql://usuario:contraseña@host:puerto/base_datos"
-
-# Servidor
-PORT=5000
+DATABASE_URL="mysql://usuario:contraseña@host_remoto:3306/nombre_bd"
+PORT=3000
 NODE_ENV=development
-
-# JWT
-JWT_SECRET=tu_clave_secreta_muy_segura_aqui
+JWT_SECRET=tu_clave_secreta
 JWT_EXPIRES_IN=8h
-
-# Admin inicial (opcional, para seeding)
 ADMIN_NAME=Administrador
 ADMIN_EMAIL=admin@origenesfleet.com
 ADMIN_PASSWORD=tu_contraseña_segura
 ```
 
-### 3. Configurar base de datos
+### 3. Iniciar el servidor
 ```bash
-# Generar cliente Prisma
-npm run prisma:generate
-
-# Crear tablas en la base de datos
-npm run prisma:push
-
-# Ejecutar migraciones (si existen)
-npm run prisma:migrate
+npm start
 ```
 
-### 4. Crear usuario administrador inicial
-```bash
-npm run seed:admin
-```
-
-### 5. Iniciar servidor de desarrollo
-```bash
-npm run dev
-```
-
-El servidor estará disponible en `http://localhost:5000`
+La app se ejecutará en `http://localhost:3000` y usará la base de datos remota definida en `DATABASE_URL`.
 
 ## 📖 Uso de la Aplicación
 
