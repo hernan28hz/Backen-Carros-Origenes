@@ -2,6 +2,7 @@ const prisma = require("../../config/prisma");
 const asyncHandler = require("../../utils/asyncHandler");
 const ApiError = require("../../utils/apiError");
 const { isPrimaryAdmin } = require("../../utils/adminAccess");
+const { ROLES } = require("../../utils/permissions");
 
 const getVehiclesGlobalStatus = asyncHandler(async (_req, res) => {
   const [statusCount, vehicles] = await Promise.all([
@@ -38,8 +39,8 @@ const getVehiclesGlobalStatus = asyncHandler(async (_req, res) => {
 });
 
 const listOperators = asyncHandler(async (_req, res) => {
-  const operators = await prisma.user.findMany({
-    where: { role: "OPERADOR" },
+  const users = await prisma.user.findMany({
+    where: { role: { not: ROLES.ADMIN } },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -52,13 +53,15 @@ const listOperators = asyncHandler(async (_req, res) => {
         select: {
           vehicles: true,
           statusUpdates: true,
+          adminUpdates: true,
           photos: true,
+          financeRecords: true,
         },
       },
     },
   });
 
-  return res.json(operators);
+  return res.json(users);
 });
 
 const listAdministrators = asyncHandler(async (req, res) => {
@@ -67,7 +70,7 @@ const listAdministrators = asyncHandler(async (req, res) => {
   }
 
   const administrators = await prisma.user.findMany({
-    where: { role: "ADMIN" },
+    where: { role: ROLES.ADMIN },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

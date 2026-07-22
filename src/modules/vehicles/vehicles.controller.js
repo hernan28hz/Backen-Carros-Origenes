@@ -1,6 +1,7 @@
 const prisma = require("../../config/prisma");
 const ApiError = require("../../utils/apiError");
 const asyncHandler = require("../../utils/asyncHandler");
+const { createAuditLog } = require("../../services/auditLog");
 
 const ADMIN_DETAIL_FIELDS = {
   assignedOperator: "Operador asignado",
@@ -11,8 +12,6 @@ const ADMIN_DETAIL_FIELDS = {
   pendingProcedures: "Tramites pendientes",
   fines: "Multas",
 };
-
-const OPERATOR_ALLOWED_DETAIL_FIELDS = ["soatExpiry", "tecnomecanicaExpiry", "vehicleTaxExpiry", "fines"];
 
 function hasOwnProperty(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
@@ -51,40 +50,52 @@ const createVehicle = asyncHandler(async (req, res) => {
   const { plate, vin, brand, model, assignedOperator, year, currentStatus } = req.body;
   const normalizedPlate = plate.toUpperCase().trim();
 
-  const vehicle = await prisma.vehicle.create({
-    data: {
-      plate: normalizedPlate,
-      vin: vin?.toUpperCase().trim(),
-      brand,
-      model,
-      assignedOperator: assignedOperator?.trim() || null,
-      year,
-      currentStatus: currentStatus || "AVAILABLE",
-      createdById: req.user.id,
-      statusHistory: {
-        create: {
-          statusType: "REGISTERED",
-          description: "Vehicle registered",
-          updatedById: req.user.id,
+  const vehicle = await prisma.$transaction(async (tx) => {
+    const createdVehicle = await tx.vehicle.create({
+      data: {
+        plate: normalizedPlate,
+        vin: vin?.toUpperCase().trim(),
+        brand,
+        model,
+        assignedOperator: assignedOperator?.trim() || null,
+        year,
+        currentStatus: currentStatus || "AVAILABLE",
+        createdById: req.user.id,
+        statusHistory: {
+          create: {
+            statusType: "REGISTERED",
+            description: "Vehicle registered",
+            updatedById: req.user.id,
+          },
         },
       },
-    },
-    include: {
-      statusHistory: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
+      include: {
+        statusHistory: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
-    },
+    });
+
+    await createAuditLog(
+      {
+        userId: req.user.id,
+        action: "CREATE",
+        entity: "Vehicle",
+        entityId: createdVehicle.id,
+        newValue: createdVehicle,
+      },
+      tx
+    );
+
+    return createdVehicle;
   });
 
   return res.status(201).json(vehicle);
 });
 
 const listVehicles = asyncHandler(async (req, res) => {
-  const where = req.user.role === "ADMIN" ? {} : { createdById: req.user.id };
-
   const vehicles = await prisma.vehicle.findMany({
-    where,
     orderBy: { createdAt: "desc" },
     include: {
       createdBy: {
@@ -131,10 +142,6 @@ const getVehicleById = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Vehicle not found");
   }
 
-  if (req.user.role !== "ADMIN" && vehicle.createdById !== req.user.id) {
-    throw new ApiError(403, "You do not have access to this vehicle");
-  }
-
   return res.json(vehicle);
 });
 
@@ -147,7 +154,6 @@ const updateVehicleDetails = asyncHandler(async (req, res) => {
     where: { id },
     select: {
       id: true,
-      createdById: true,
       assignedOperator: true,
       observations: true,
       soatExpiry: true,
@@ -162,11 +168,6 @@ const updateVehicleDetails = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Vehicle not found");
   }
 
-  const isAdmin = req.user.role === "ADMIN";
-  if (!isAdmin && vehicle.createdById !== req.user.id) {
-    throw new ApiError(403, "You do not have access to update vehicle details");
-  }
-
   const payload = {
     assignedOperator,
     observations,
@@ -176,7 +177,7 @@ const updateVehicleDetails = asyncHandler(async (req, res) => {
     pendingProcedures,
     fines,
   };
-  const allowedFields = isAdmin ? Object.keys(ADMIN_DETAIL_FIELDS) : OPERATOR_ALLOWED_DETAIL_FIELDS;
+  const allowedFields = Object.keys(ADMIN_DETAIL_FIELDS);
   const nextDetails = allowedFields.reduce((accumulator, field) => {
     if (!hasOwnProperty(payload, field)) {
       return accumulator;
@@ -218,6 +219,25 @@ const updateVehicleDetails = asyncHandler(async (req, res) => {
       await tx.vehicleAdminHistory.createMany({
         data: changedFields,
       });
+
+      await createAuditLog(
+        {
+          userId: req.user.id,
+          action: "UPDATE",
+          entity: "Vehicle",
+          entityId: id,
+          oldValue: changedFields.reduce((accumulator, item) => {
+            accumulator[item.field] = item.oldValue;
+            return accumulator;
+          }, {}),
+          newValue: changedFields.reduce((accumulator, item) => {
+            accumulator[item.field] = item.newValue;
+            return accumulator;
+          }, {}),
+          metadata: { changedFields: changedFields.map((item) => item.field) },
+        },
+        tx
+      );
     }
 
     return tx.vehicle.findUnique({
@@ -250,19 +270,28 @@ const updateVehicleDetails = asyncHandler(async (req, res) => {
 const deleteVehicle = asyncHandler(async (req, res) => {
   const vehicle = await prisma.vehicle.findUnique({
     where: { id: req.params.id },
-    select: { id: true, plate: true, createdById: true },
+    select: { id: true, plate: true },
   });
 
   if (!vehicle) {
     throw new ApiError(404, "Vehicle not found");
   }
 
-  if (req.user.role !== "ADMIN" && vehicle.createdById !== req.user.id) {
-    throw new ApiError(403, "You do not have access to this vehicle");
-  }
+  await prisma.$transaction(async (tx) => {
+    await tx.vehicle.delete({
+      where: { id: req.params.id },
+    });
 
-  await prisma.vehicle.delete({
-    where: { id: req.params.id },
+    await createAuditLog(
+      {
+        userId: req.user.id,
+        action: "DELETE",
+        entity: "Vehicle",
+        entityId: vehicle.id,
+        oldValue: vehicle,
+      },
+      tx
+    );
   });
 
   return res.json({ message: "Vehicle deleted successfully", id: vehicle.id, plate: vehicle.plate });

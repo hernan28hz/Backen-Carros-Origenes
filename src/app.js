@@ -1,10 +1,10 @@
 const path = require("node:path");
 const express = require("express");
+const compression = require("compression");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 require("./config/env");
-const prisma = require("./config/prisma");
 const errorMiddleware = require("./middlewares/error.middleware");
 
 const authRoutes = require("./modules/auth/auth.routes");
@@ -14,6 +14,8 @@ const statusRoutes = require("./modules/status/status.routes");
 const photosRoutes = require("./modules/photos/photos.routes");
 const adminRoutes = require("./modules/admin/admin.routes");
 const catalogRoutes = require("./modules/catalog/catalog.routes");
+const imagesRoutes = require("./modules/images/images.routes");
+const financeRoutes = require("./modules/finance/finance.routes");
 
 const app = express();
 const publicIndexPath = path.join(process.cwd(), "public", "index.html");
@@ -32,38 +34,37 @@ const setNoCacheHeaders = (res) => {
 app.use(helmet());
 app.use(cors());
 app.use(morgan("dev"));
+app.use(compression());
 app.use(express.json({ limit: "2mb" }));
-app.use((_, res, next) => {
-  setNoCacheHeaders(res);
-  next();
-});
 
 app.use(
   express.static(publicStaticPath, {
-    etag: false,
-    lastModified: false,
-    maxAge: "1d",
-    setHeaders: (res, path) => {
-      if (path.endsWith(".html")) {
+    etag: true,
+    immutable: true,
+    lastModified: true,
+    maxAge: "30d",
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".html")) {
         setNoCacheHeaders(res);
-        res.removeHeader("ETag");
-        res.removeHeader("Last-Modified");
       }
     },
   })
 );
+app.use("/images", imagesRoutes);
 app.use(
   "/uploads",
   express.static(uploadsStaticPath, {
-    etag: false,
-    lastModified: false,
-    maxAge: "1d",
-    setHeaders: (res) => {
-      res.removeHeader("ETag");
-      res.removeHeader("Last-Modified");
-    },
+    etag: true,
+    immutable: true,
+    lastModified: true,
+    maxAge: "30d",
   })
 );
+
+app.use((_, res, next) => {
+  setNoCacheHeaders(res);
+  next();
+});
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
@@ -76,9 +77,21 @@ app.use("/vehicles", vehiclesRoutes);
 app.use("/vehicles", statusRoutes);
 app.use("/vehicles", photosRoutes);
 app.use("/admin", adminRoutes);
+app.use("/finance", financeRoutes);
 
 app.get(
-  ["/", "/login", "/catalogo", "/dashboard", "/perfil", "/vehiculo/:id", "/admin/vehiculos", "/admin/operadores", "/admin/mensajes"],
+  [
+    "/",
+    "/login",
+    "/catalogo",
+    "/dashboard",
+    "/perfil",
+    "/vehiculo/:id",
+    "/admin/vehiculos",
+    "/admin/operadores",
+    "/admin/mensajes",
+    "/finanzas",
+  ],
   (_req, res) => {
     setNoCacheHeaders(res);
     res.sendFile(publicIndexPath);

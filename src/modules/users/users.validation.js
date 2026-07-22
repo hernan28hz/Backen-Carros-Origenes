@@ -1,5 +1,8 @@
 const { z } = require("zod");
 const { isValidIdentifier } = require("../../utils/identity");
+const { ROLES } = require("../../utils/permissions");
+
+const systemRoleSchema = z.enum([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.GERENTE]);
 
 const createUserSchema = z.object({
   body: z.object({
@@ -8,7 +11,7 @@ const createUserSchema = z.object({
       message: "Debe ser un email valido o una cedula valida",
     }),
     password: z.string().min(6),
-    role: z.enum(["ADMIN", "OPERADOR"]).default("OPERADOR"),
+    role: systemRoleSchema.default(ROLES.DIRECTOR),
   }),
   params: z.object({}).optional().default({}),
   query: z.object({}).optional().default({}),
@@ -29,6 +32,7 @@ const updateUserSchema = z.object({
       message: "Debe ser un email valido o una cedula valida",
     }).optional(),
     password: z.string().min(6).optional(),
+    role: systemRoleSchema.optional(),
     isActive: z.boolean().optional(),
   }).refine((data) => Object.keys(data).length > 0, {
     message: "Debes enviar al menos un campo para actualizar",

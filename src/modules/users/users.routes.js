@@ -10,6 +10,7 @@ const {
   confirmCurrentUserEmailVerificationSchema,
 } = require("./users.validation");
 const {
+  listUsers,
   createUser,
   getCurrentUser,
   requestCurrentUserEmailVerification,
@@ -21,6 +22,7 @@ const {
 const router = Router();
 
 router.post("/", authMiddleware, requireRole("ADMIN"), validate(createUserSchema), createUser);
+router.get("/", authMiddleware, requireRole("ADMIN", "DIRECTOR", "GERENTE"), listUsers);
 router.get("/me", authMiddleware, getCurrentUser);
 router.post(
   "/me/email-verification/request",

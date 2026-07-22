@@ -6,6 +6,17 @@ const STATUS_META = {
   SOLD: { label: "Vendido", className: "neutral" },
 };
 
+const APP_NAME = "GRUPO W LOGIST";
+const STORAGE_KEYS = {
+  token: "grupowlogist_token",
+  user: "grupowlogist_user",
+  legacyToken: "fleet_token",
+  legacyUser: "fleet_user",
+};
+const PRIMARY_ADMIN_ID = "adminWlogit01";
+const PRIMARY_ADMIN_IDS = [PRIMARY_ADMIN_ID, "admin-origenes-001"];
+const PRIMARY_ADMIN_EMAILS = ["admin01@grupowlogist.com", "admin@grupowlogist.com", "admin@origenesfleet.com"];
+
 const SIDEBAR_ICONS = {
   home: iconSvg(
     '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/>'
@@ -28,6 +39,9 @@ const SIDEBAR_ICONS = {
   messages: iconSvg(
     '<path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z"/><path d="M8 9h8"/><path d="M8 13h5"/>'
   ),
+  finance: iconSvg(
+    '<path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/>'
+  ),
   logout: iconSvg(
     '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'
   ),
@@ -39,16 +53,21 @@ const SIDEBAR_LINKS = {
     { route: "/catalogo", label: "Catalogo", icon: SIDEBAR_ICONS.catalog, matches: ["catalog"] },
     { route: "/login", label: "Iniciar sesion", icon: SIDEBAR_ICONS.login, matches: ["login"] },
   ],
-  OPERADOR: [
-    { route: "/", label: "Inicio", icon: SIDEBAR_ICONS.home, matches: ["home"] },
+  DIRECTOR: [
     { route: "/catalogo", label: "Catalogo", icon: SIDEBAR_ICONS.catalog, matches: ["catalog"] },
-    { route: "/dashboard", label: "Panel", icon: SIDEBAR_ICONS.dashboard, matches: ["dashboard"] },
+    { route: "/admin/operadores", label: "Usuarios", icon: SIDEBAR_ICONS.operators, matches: ["adminOperators"] },
+    { route: "/perfil", label: "Perfil", icon: SIDEBAR_ICONS.profile, matches: ["profile"] },
+  ],
+  GERENTE: [
+    { route: "/catalogo", label: "Catalogo", icon: SIDEBAR_ICONS.catalog, matches: ["catalog"] },
+    { route: "/finanzas", label: "Finanzas", icon: SIDEBAR_ICONS.finance, matches: ["finance"] },
+    { route: "/admin/operadores", label: "Usuarios", icon: SIDEBAR_ICONS.operators, matches: ["adminOperators"] },
     { route: "/perfil", label: "Perfil", icon: SIDEBAR_ICONS.profile, matches: ["profile"] },
   ],
   ADMIN: [
-    { route: "/", label: "Inicio", icon: SIDEBAR_ICONS.home, matches: ["home"] },
     { route: "/catalogo", label: "Catalogo", icon: SIDEBAR_ICONS.catalog, matches: ["catalog"] },
     { route: "/dashboard", label: "Panel", icon: SIDEBAR_ICONS.dashboard, matches: ["dashboard"] },
+    { route: "/finanzas", label: "Finanzas", icon: SIDEBAR_ICONS.finance, matches: ["finance"] },
     { route: "/admin/operadores", label: "Usuarios", icon: SIDEBAR_ICONS.operators, matches: ["adminOperators"] },
     { route: "/admin/mensajes", label: "Mensajes", icon: SIDEBAR_ICONS.messages, matches: ["adminMessages"] },
     { route: "/perfil", label: "Perfil", icon: SIDEBAR_ICONS.profile, matches: ["profile"] },
@@ -56,12 +75,17 @@ const SIDEBAR_LINKS = {
 };
 
 const state = {
-  token: localStorage.getItem("fleet_token") || "",
-  user: readJson("fleet_user"),
+  token: localStorage.getItem(STORAGE_KEYS.token) || localStorage.getItem(STORAGE_KEYS.legacyToken) || "",
+  user: readJson(STORAGE_KEYS.user) || readJson(STORAGE_KEYS.legacyUser),
   catalogVehicles: [],
+  publicCatalogLoaded: false,
+  publicCatalogLoadedAt: 0,
+  publicCatalogError: "",
   privateVehicles: [],
   operators: [],
   administrators: [],
+  financeRecords: [],
+  financeSummary: { income: 0, expenses: 0, balance: 0, byType: {} },
   sidebarCollapsed: localStorage.getItem("sidebar_collapsed") === "true",
   mobileSidebarOpen: false,
   systemMessages: readJson("admin_system_messages") || [],
@@ -74,6 +98,7 @@ const state = {
     publicCatalog: false,
     privateVehicles: false,
     operators: false,
+    finance: false,
     activeView: false,
   },
   pullToRefresh: {
@@ -121,12 +146,6 @@ const elements = {
   pageKicker: document.getElementById("pageKicker"),
   pageTitle: document.getElementById("pageTitle"),
   dashboardVehiclesList: document.getElementById("dashboardVehiclesList"),
-  dashboardAvailableLabel: document.getElementById("dashboardAvailableLabel"),
-  dashboardServiceLabel: document.getElementById("dashboardServiceLabel"),
-  dashboardMaintenanceLabel: document.getElementById("dashboardMaintenanceLabel"),
-  dashboardAvailableBar: document.getElementById("dashboardAvailableBar"),
-  dashboardServiceBar: document.getElementById("dashboardServiceBar"),
-  dashboardMaintenanceBar: document.getElementById("dashboardMaintenanceBar"),
   privateStatusFilter: document.getElementById("privateStatusFilter"),
   refreshVehiclesButton: document.getElementById("refreshVehiclesButton"),
   privateVehiclesGrid: document.getElementById("privateVehiclesGrid"),
@@ -140,6 +159,11 @@ const elements = {
   profileContent: document.getElementById("profileContent"),
   adminMessagesList: document.getElementById("adminMessagesList"),
   clearAdminMessagesButton: document.getElementById("clearAdminMessagesButton"),
+  financePage: document.getElementById("financePage"),
+  financeForm: document.getElementById("financeForm"),
+  financeList: document.getElementById("financeList"),
+  financeSummary: document.getElementById("financeSummary"),
+  refreshFinanceButton: document.getElementById("refreshFinanceButton"),
   publicVehicleCardTemplate: document.getElementById("publicVehicleCardTemplate"),
   privateVehicleItemTemplate: document.getElementById("privateVehicleItemTemplate"),
   operatorItemTemplate: document.getElementById("operatorItemTemplate"),
@@ -183,7 +207,7 @@ function bindEvents() {
 
   elements.loginForm.addEventListener("submit", handleLogin);
   elements.publicStatusFilter.addEventListener("change", () => renderCurrentRoute());
-  elements.refreshCatalogButton.addEventListener("click", loadPublicCatalog);
+  elements.refreshCatalogButton.addEventListener("click", () => loadPublicCatalog({ force: true }));
   elements.authShortcutButton.addEventListener("click", handleAuthShortcut);
   elements.sidebarLogoutButton.addEventListener("click", handleLogout);
   elements.sidebarToggleButton.addEventListener("click", toggleSidebar);
@@ -196,6 +220,8 @@ function bindEvents() {
   });
   elements.userForm.addEventListener("submit", handleCreateUser);
   elements.vehicleForm.addEventListener("submit", handleCreateVehicle);
+  elements.refreshFinanceButton.addEventListener("click", () => loadFinanceData({ force: true }));
+  elements.financeForm.addEventListener("submit", handleCreateFinanceRecord);
   elements.clearAdminMessagesButton.addEventListener("click", () => {
     state.systemMessages = [];
     persistMessages();
@@ -251,9 +277,38 @@ function handleDocumentClick(event) {
     return;
   }
 
+  const editUserButton = event.target.closest("[data-edit-user]");
+  if (editUserButton) {
+    handleEditUser(editUserButton.dataset.editUser);
+    return;
+  }
+
+  const catalogMetricButton = event.target.closest("[data-catalog-status-filter]");
+  if (catalogMetricButton) {
+    applyCatalogStatusFilter(catalogMetricButton.dataset.catalogStatusFilter);
+    return;
+  }
+
   const editAdminButton = event.target.closest("[data-edit-admin]");
   if (editAdminButton) {
     handleEditAdministrator(editAdminButton.dataset.editAdmin);
+  }
+
+  const deleteAdminButton = event.target.closest("[data-delete-admin]");
+  if (deleteAdminButton) {
+    handleDeleteOperator(deleteAdminButton.dataset.deleteAdmin);
+    return;
+  }
+
+  const deleteFinanceButton = event.target.closest("[data-delete-finance]");
+  if (deleteFinanceButton) {
+    handleDeleteFinanceRecord(deleteFinanceButton.dataset.deleteFinance);
+    return;
+  }
+
+  const editFinanceButton = event.target.closest("[data-edit-finance]");
+  if (editFinanceButton) {
+    handleEditFinanceRecord(editFinanceButton.dataset.editFinance);
   }
 }
 
@@ -281,11 +336,12 @@ function resolveRoute(pathname) {
   if (path === "/") return { name: "home", access: "public" };
   if (path === "/login") return { name: "login", access: "public" };
   if (path === "/catalogo") return { name: "catalog", access: "public" };
-  if (path === "/dashboard") return { name: "dashboard", access: "auth" };
+  if (path === "/dashboard") return { name: "dashboard", access: "admin" };
   if (path === "/perfil") return { name: "profile", access: "auth" };
-  if (path === "/admin/vehiculos") return { name: "adminVehicles", access: "admin" };
-  if (path === "/admin/operadores") return { name: "adminOperators", access: "admin" };
+  if (path === "/admin/vehiculos") return { name: "legacyAdminVehicles", access: "public", redirectTo: "/catalogo" };
+  if (path === "/admin/operadores") return { name: "adminOperators", access: "auth" };
   if (path === "/admin/mensajes") return { name: "adminMessages", access: "admin" };
+  if (path === "/finanzas") return { name: "finance", access: "finance" };
 
   const vehicleEditMatch = path.match(/^\/vehiculo\/([^/]+)\/editar$/);
   if (vehicleEditMatch) return { name: "vehicleEdit", access: "auth", params: { id: vehicleEditMatch[1] } };
@@ -323,8 +379,18 @@ function enforceAccess(route) {
   const isAuthenticated = Boolean(state.token && state.user);
   const role = state.user?.role;
 
+  if (route.redirectTo) {
+    navigate(route.redirectTo, { replace: true });
+    return { redirected: true };
+  }
+
   if (route.name === "notFound") {
-    navigate(isAuthenticated ? "/dashboard" : "/", { replace: true });
+    navigate(isAuthenticated ? getDefaultPrivateRoute() : "/", { replace: true });
+    return { redirected: true };
+  }
+
+  if (isAuthenticated && route.name === "home") {
+    navigate(getDefaultPrivateRoute(), { replace: true });
     return { redirected: true };
   }
 
@@ -334,7 +400,17 @@ function enforceAccess(route) {
   }
 
   if (route.access === "admin" && role !== "ADMIN") {
-    navigate("/dashboard", { replace: true });
+    navigate(getDefaultPrivateRoute(), { replace: true });
+    return { redirected: true };
+  }
+
+  if (route.access === "finance" && !canAccessFinance()) {
+    navigate(getDefaultPrivateRoute(), { replace: true });
+    return { redirected: true };
+  }
+
+  if (route.name === "vehicleEdit" && role !== "ADMIN") {
+    navigate(route.params?.id ? `/vehiculo/${route.params.id}` : getDefaultPrivateRoute(), { replace: true });
     return { redirected: true };
   }
 
@@ -352,14 +428,22 @@ function renderPublicRoute(route) {
   }
 
   if (route.name === "home") {
-    renderPublicVehicles(elements.homeCatalogPreview, state.catalogVehicles);
+    const availableVehicles = state.catalogVehicles.filter((vehicle) => vehicle.currentStatus === "AVAILABLE");
+    renderPublicVehicles(elements.homeCatalogPreview, availableVehicles.slice(0, 8), {
+      loading: state.refreshLocks.publicCatalog && !state.publicCatalogLoaded,
+      error: state.publicCatalogError,
+      simple: true,
+    });
   }
 
   if (route.name === "catalog") {
     const filter = elements.publicStatusFilter.value;
     const vehicles = state.catalogVehicles.filter((vehicle) => filter === "ALL" || vehicle.currentStatus === filter);
-    renderCatalogOverview(vehicles);
-    renderPublicVehicles(elements.publicCatalogGrid, vehicles);
+    renderCatalogOverview(state.catalogVehicles, filter);
+    renderPublicVehicles(elements.publicCatalogGrid, vehicles, {
+      loading: state.refreshLocks.publicCatalog && !state.publicCatalogLoaded,
+      error: state.publicCatalogError,
+    });
   }
 }
 
@@ -388,6 +472,7 @@ function renderAppChrome(routeName) {
     adminVehicles: { kicker: "Administracion", title: "Gestion de vehiculos" },
     adminOperators: { kicker: "Administracion", title: "Gestion de Usuarios" },
     adminMessages: { kicker: "Administracion", title: "Mensajes del sistema" },
+    finance: { kicker: "Finanzas", title: "Gestion financiera" },
     profile: { kicker: "Cuenta", title: "Perfil" },
     vehicle: { kicker: "Detalle", title: "Vehiculo" },
     vehicleEdit: { kicker: "Edicion", title: "Editar vehiculo" },
@@ -409,16 +494,22 @@ function renderAppChrome(routeName) {
   elements.sidebarLogoutButton.classList.toggle("hidden", !state.user);
   elements.authShortcutButton.textContent = state.user ? "Perfil" : "Iniciar sesion";
   elements.appShell.classList.toggle("public-topbar-minimal", isPublicRoute);
+  elements.appShell.classList.toggle("public-route", isPublicRoute);
+  elements.appShell.classList.toggle("home-route", routeName === "home");
+  elements.appShell.classList.toggle("catalog-route", routeName === "catalog");
+  elements.appShell.classList.toggle("login-route", routeName === "login");
   elements.sidebar.classList.toggle("authenticated", Boolean(state.user));
   elements.sidebarBrandKicker.textContent = state.user ? "Navegacion privada" : "Navegacion";
-  elements.sidebarBrandTitle.textContent = state.user ? "Menu" : "Origenes Fleet";
+  elements.sidebarBrandTitle.textContent = state.user ? "Menu" : APP_NAME;
   elements.sidebarSectionLabel.textContent = state.user ? "Modulos" : "Explorar";
   renderSidebarUserBlock();
   syncMobileSidebarUI();
 }
 
 function renderSidebar(activeRouteName) {
-  const links = state.user ? SIDEBAR_LINKS[state.user.role] || [] : SIDEBAR_LINKS.PUBLIC;
+  const links = (state.user ? SIDEBAR_LINKS[state.user.role] || [] : SIDEBAR_LINKS.PUBLIC).filter(
+    (link) => link.route !== "/finanzas" || canAccessFinance()
+  );
   elements.sidebarNav.innerHTML = links
     .map((link) => {
       const isActive = Array.isArray(link.matches) && link.matches.includes(activeRouteName);
@@ -436,7 +527,7 @@ function renderSidebar(activeRouteName) {
 function renderSidebarUserBlock() {
   if (!state.user) {
     elements.sidebarUserCard.classList.add("hidden");
-    elements.sidebarUserAvatar.textContent = "OF";
+    elements.sidebarUserAvatar.textContent = "GW";
     elements.sidebarUserName.textContent = "Visitante";
     elements.sidebarUserMeta.textContent = "Navegacion publica";
     return;
@@ -454,7 +545,7 @@ function renderPrivateRoute(route) {
 
   if (route.name === "dashboard") {
     elements.dashboardPage.classList.remove("hidden");
-    elements.actionsPanel.classList.remove("hidden");
+    elements.actionsPanel.classList.toggle("hidden", state.user?.role !== "ADMIN");
     renderDashboard();
     return;
   }
@@ -489,6 +580,12 @@ function renderPrivateRoute(route) {
     return;
   }
 
+  if (route.name === "finance") {
+    elements.financePage.classList.remove("hidden");
+    renderFinancePage();
+    return;
+  }
+
   if (route.name === "profile") {
     elements.profilePage.classList.remove("hidden");
     renderProfilePage();
@@ -503,6 +600,7 @@ function hidePrivatePages() {
     elements.adminOperatorsPage,
     elements.profilePage,
     elements.adminMessagesPage,
+    elements.financePage,
     elements.actionsPanel,
   ].forEach((page) => page.classList.add("hidden"));
 }
@@ -526,14 +624,23 @@ async function checkHealth() {
 }
 
 async function loadPublicCatalog(options = {}) {
-  const { silent = false } = options;
+  const { silent = false, force = false } = options;
+  if (!force && state.publicCatalogLoaded && Date.now() - state.publicCatalogLoadedAt < 60000) {
+    renderCurrentRoute();
+    return;
+  }
   if (state.refreshLocks.publicCatalog) return;
   state.refreshLocks.publicCatalog = true;
+  state.publicCatalogError = "";
+  renderCurrentRoute();
 
   try {
     state.catalogVehicles = await apiFetch("/catalog/vehicles", { auth: false });
+    state.publicCatalogLoaded = true;
+    state.publicCatalogLoadedAt = Date.now();
     renderCurrentRoute();
   } catch (error) {
+    state.publicCatalogError = "No se pudieron cargar los vehiculos. Verifica que la API este activa.";
     if (!silent) {
       pushToast("error", error.message);
     }
@@ -544,7 +651,7 @@ async function loadPublicCatalog(options = {}) {
 
 async function loadPrivateData() {
   if (!state.token) return;
-  await Promise.all([loadCurrentUser(), loadPrivateVehicles(), loadOperators(), loadAdministrators()]);
+  await Promise.all([loadCurrentUser(), loadPrivateVehicles(), loadOperators(), loadAdministrators(), loadFinanceData()]);
 }
 
 async function loadCurrentUser(options = {}) {
@@ -554,7 +661,7 @@ async function loadCurrentUser(options = {}) {
   try {
     const user = await apiFetch("/users/me");
     state.user = user;
-    localStorage.setItem("fleet_user", JSON.stringify(state.user));
+    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(state.user));
     renderCurrentRoute();
   } catch (error) {
     if (!silent) {
@@ -583,12 +690,12 @@ async function loadPrivateVehicles(options = {}) {
 
 async function loadOperators(options = {}) {
   const { silent = false } = options;
-  if (state.user?.role !== "ADMIN") return;
+  if (!state.user) return;
   if (state.refreshLocks.operators) return;
   state.refreshLocks.operators = true;
 
   try {
-    state.operators = await apiFetch("/admin/operators");
+    state.operators = await apiFetch("/users");
     renderCurrentRoute();
   } catch (error) {
     if (!silent) {
@@ -659,7 +766,7 @@ async function refreshActiveView(options = {}) {
   state.refreshLocks.activeView = true;
 
   try {
-    const tasks = [loadPublicCatalog({ silent })];
+    const tasks = [loadPublicCatalog({ silent, force: reason === "manual" || reason === "pull" })];
 
     await Promise.all(tasks);
 
@@ -751,25 +858,7 @@ function resetPullToRefresh() {
 
 function renderDashboard() {
   const vehicles = state.privateVehicles;
-  const total = vehicles.length;
-  const availableTotal = vehicles.filter((vehicle) => vehicle.currentStatus === "AVAILABLE").length;
-  const serviceTotal = vehicles.filter((vehicle) => vehicle.currentStatus === "REGISTERED").length;
-  const maintenanceTotal = vehicles.filter((vehicle) => vehicle.currentStatus === "IN_MAINTENANCE").length;
-  renderVehicleList(elements.dashboardVehiclesList, vehicles, "route");
-
-  if (elements.dashboardAvailableLabel) {
-    elements.dashboardAvailableLabel.textContent = String(availableTotal);
-  }
-  if (elements.dashboardServiceLabel) {
-    elements.dashboardServiceLabel.textContent = String(serviceTotal);
-  }
-  if (elements.dashboardMaintenanceLabel) {
-    elements.dashboardMaintenanceLabel.textContent = String(maintenanceTotal);
-  }
-
-  setMetricBar(elements.dashboardAvailableBar, total ? (availableTotal / total) * 100 : 0);
-  setMetricBar(elements.dashboardServiceBar, total ? (serviceTotal / total) * 100 : 0);
-  setMetricBar(elements.dashboardMaintenanceBar, total ? (maintenanceTotal / total) * 100 : 0);
+  renderDashboardVehicleCards(elements.dashboardVehiclesList, vehicles);
 }
 
 function renderAdminVehiclesPage() {
@@ -783,30 +872,49 @@ async function renderVehicleRoute(vehicleId, options = {}) {
 }
 
 function renderOperatorsPage() {
+  const canManageUsers = state.user?.role === "ADMIN";
+  const createUserCard = elements.userForm.closest(".card");
   const userRoleSelect = elements.userForm.querySelector('[name="role"]');
   const adminRoleOption = userRoleSelect?.querySelector('option[value="ADMIN"]');
+  if (createUserCard) {
+    createUserCard.classList.toggle("hidden", !canManageUsers);
+  }
   if (adminRoleOption) {
-    adminRoleOption.disabled = false;
+    adminRoleOption.disabled = !isPrimaryAdminUser();
   }
 
   elements.administratorsSection.classList.toggle("hidden", !isPrimaryAdminUser());
 
   if (!state.operators.length) {
-    elements.operatorsList.innerHTML = '<div class="empty-panel">No hay operadores registrados.</div>';
+    elements.operatorsList.innerHTML = '<div class="empty-panel">No hay usuarios registrados.</div>';
   } else {
-    const fragment = document.createDocumentFragment();
-    state.operators.forEach((operator) => {
-      const node = elements.operatorItemTemplate.content.cloneNode(true);
-      node.querySelector(".operator-avatar").textContent = initialsForName(operator.name);
-      node.querySelector(".operator-name").textContent = operator.name;
-      node.querySelector(".operator-email").textContent = `${operator.email} - ${formatDate(operator.createdAt)}`;
-      setBadge(node.querySelector(".operator-role"), operator.role, "info");
-      node.querySelector(".operator-delete-button").dataset.deleteOperator = operator.id;
-      fragment.appendChild(node);
-    });
-
-    elements.operatorsList.innerHTML = "";
-    elements.operatorsList.appendChild(fragment);
+    elements.operatorsList.innerHTML = state.operators
+      .map(
+        (user) => `
+          <article class="list-card">
+            <div class="list-card-main">
+              <div class="avatar-chip operator-avatar">${escapeHtml(initialsForName(user.name))}</div>
+              <div>
+                <strong class="operator-name">${escapeHtml(user.name)}</strong>
+                <span class="operator-email">${escapeHtml(user.email)} - ${escapeHtml(formatDate(user.createdAt))}</span>
+              </div>
+            </div>
+            <div class="list-card-meta">
+              <span class="status-pill info">${escapeHtml(user.role)}</span>
+              <span class="status-pill ${user.isActive ? "available" : "maintenance"}">${user.isActive ? "Activo" : "Inactivo"}</span>
+              ${
+                canManageUsers
+                  ? `
+                    <button class="button button-secondary" type="button" data-edit-user="${escapeAttribute(user.id)}">Editar</button>
+                    <button class="button button-ghost operator-delete-button" type="button" data-delete-operator="${escapeAttribute(user.id)}">Eliminar</button>
+                  `
+                  : ""
+              }
+            </div>
+          </article>
+        `
+      )
+      .join("");
   }
 
   if (!isPrimaryAdminUser()) {
@@ -833,6 +941,7 @@ function renderOperatorsPage() {
           <div class="list-card-meta">
             <span class="status-pill ${admin.isActive ? "available" : "maintenance"}">${admin.isActive ? "Activo" : "Inactivo"}</span>
             <button class="button button-secondary" type="button" data-edit-admin="${admin.id}">Editar</button>
+            <button class="button button-ghost" type="button" data-delete-admin="${admin.id}">Eliminar</button>
           </div>
         </article>
       `
@@ -956,6 +1065,76 @@ function renderAdminMessages() {
     .join("");
 }
 
+function renderFinancePage() {
+  renderFinanceVehicleOptions();
+  renderFinanceSummary();
+  renderFinanceRecords();
+}
+
+function renderFinanceVehicleOptions() {
+  const select = elements.financeForm.querySelector('[name="vehicleId"]');
+  if (!select) return;
+
+  const currentValue = select.value;
+  select.innerHTML = `
+    <option value="">Sin vehiculo</option>
+    ${state.privateVehicles
+      .map(
+        (vehicle) =>
+          `<option value="${escapeAttribute(vehicle.id)}">${escapeHtml(`${vehicle.plate} - ${vehicle.brand} ${vehicle.model}`)}</option>`
+      )
+      .join("")}
+  `;
+  select.value = currentValue;
+}
+
+function renderFinanceSummary() {
+  const summary = state.financeSummary || { income: 0, expenses: 0, balance: 0 };
+  elements.financeSummary.innerHTML = `
+    <article class="stat-card">
+      <span>Ingresos</span>
+      <strong>${escapeHtml(formatMoney(summary.income || 0))}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Egresos y costos</span>
+      <strong>${escapeHtml(formatMoney(summary.expenses || 0))}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Balance</span>
+      <strong>${escapeHtml(formatMoney(summary.balance || 0))}</strong>
+    </article>
+  `;
+}
+
+function renderFinanceRecords() {
+  if (!state.financeRecords.length) {
+    elements.financeList.innerHTML = '<div class="empty-panel">Todavia no hay movimientos financieros registrados.</div>';
+    return;
+  }
+
+  elements.financeList.innerHTML = state.financeRecords
+    .map((record) => {
+      const vehicleLabel = record.vehicle
+        ? `${record.vehicle.plate} - ${record.vehicle.brand} ${record.vehicle.model}`
+        : "Sin vehiculo asociado";
+      return `
+        <article class="list-card">
+          <div>
+            <strong>${escapeHtml(record.concept)}</strong>
+            <div class="message-copy">${escapeHtml(`${getFinanceTypeLabel(record.type)} - ${vehicleLabel}`)}</div>
+            <div class="message-copy">${escapeHtml(record.client || "Sin cliente")} - ${escapeHtml(formatCalendarDate(record.date))}</div>
+          </div>
+          <div class="list-card-meta">
+            <span class="status-pill ${isFinanceIncome(record.type) ? "available" : "service"}">${escapeHtml(formatMoney(record.amount))}</span>
+            <button class="button button-secondary" type="button" data-edit-finance="${escapeAttribute(record.id)}">Editar</button>
+            <button class="button button-ghost" type="button" data-delete-finance="${escapeAttribute(record.id)}">Eliminar</button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function renderSummary(container, vehicles) {
   const counts = vehicles.reduce((accumulator, vehicle) => {
     accumulator[vehicle.currentStatus] = (accumulator[vehicle.currentStatus] || 0) + 1;
@@ -981,7 +1160,18 @@ function renderSummary(container, vehicles) {
     .join("");
 }
 
-function renderPublicVehicles(container, vehicles) {
+function renderPublicVehicles(container, vehicles, options = {}) {
+  const { loading = false, error = "", simple = false } = options;
+  if (loading) {
+    container.innerHTML = '<div class="empty-panel">Cargando vehiculos...</div>';
+    return;
+  }
+
+  if (error && !vehicles.length) {
+    container.innerHTML = `<div class="empty-panel">${escapeHtml(error)}</div>`;
+    return;
+  }
+
   if (!vehicles.length) {
     container.innerHTML = '<div class="empty-panel">No hay vehiculos para mostrar.</div>';
     return;
@@ -991,13 +1181,27 @@ function renderPublicVehicles(container, vehicles) {
   vehicles.forEach((vehicle) => {
     const card = elements.publicVehicleCardTemplate.content.cloneNode(true);
     const meta = getStatusMeta(vehicle.currentStatus);
+    const image = card.querySelector(".vehicle-image");
+    const plateElement = card.querySelector(".vehicle-plate");
+    const operatorElement = card.querySelector(".vehicle-operator");
+    const captionElement = card.querySelector(".vehicle-caption");
+    const imageStatusBadge = card.querySelector(".vehicle-status-badge");
     card.querySelector(".vehicle-card-button").dataset.publicVehicle = vehicle.id;
-    card.querySelector(".vehicle-image").src = vehicle.photoUrl || placeholderImage(vehicle.plate);
-    card.querySelector(".vehicle-image").alt = `Vehiculo ${vehicle.plate}`;
-    card.querySelector(".vehicle-plate").textContent = vehicle.plate;
+    setVehicleImage(image, vehicle.photoUrl, vehicle.plate, {
+      fallbackLabel: vehicle.plate,
+      width: 480,
+      widths: [320, 480, 640],
+      sizes: "(max-width: 768px) calc(100vw - 28px), (max-width: 1024px) 50vw, 25vw",
+    });
+    card.querySelector(".vehicle-card").classList.toggle("vehicle-card-simple", simple);
+    plateElement.textContent = vehicle.plate;
+    plateElement.classList.toggle("hidden", simple);
     card.querySelector(".vehicle-model").textContent = `${vehicle.brand || ""} ${vehicle.model || ""}`.trim() || "Modelo no disponible";
-    card.querySelector(".vehicle-operator").textContent = vehicle.operatorName || "Operador no disponible";
-    setBadge(card.querySelector(".vehicle-status-badge"), meta.label, meta.className);
+    operatorElement.textContent = vehicle.operatorName || "Operador no disponible";
+    operatorElement.classList.toggle("hidden", simple);
+    captionElement.textContent = simple ? "Clic para ver mas" : "Haz clic para ver mas";
+    imageStatusBadge.classList.toggle("hidden", simple);
+    setBadge(imageStatusBadge, meta.label, meta.className);
     setBadge(card.querySelector(".vehicle-card-status"), meta.label, meta.className);
     fragment.appendChild(card);
   });
@@ -1013,6 +1217,7 @@ function renderVehicleList(container, vehicles, mode) {
   }
 
   const fragment = document.createDocumentFragment();
+  const canManageVehicles = state.user?.role === "ADMIN";
   vehicles.forEach((vehicle) => {
     const node = elements.privateVehicleItemTemplate.content.cloneNode(true);
     const publicMatch = state.catalogVehicles.find((item) => item.id === vehicle.id);
@@ -1028,15 +1233,19 @@ function renderVehicleList(container, vehicles, mode) {
     node.querySelector(".detail-button").dataset.privateVehicle = vehicle.id;
     if (editInfoButton) {
       editInfoButton.dataset.editVehicle = vehicle.id;
-      editInfoButton.classList.toggle("hidden", mode !== "route");
+      editInfoButton.classList.toggle("hidden", !canManageVehicles);
     }
-    node.querySelector(".list-card-thumb").src = publicMatch?.photoUrl || placeholderImage(vehicle.plate);
-    node.querySelector(".list-card-thumb").alt = `Vehiculo ${vehicle.plate}`;
+    setVehicleImage(node.querySelector(".list-card-thumb"), publicMatch?.photoUrl, vehicle.plate, {
+      fallbackLabel: vehicle.plate,
+      width: 160,
+      widths: [160, 320],
+      sizes: "64px",
+    });
     node.querySelector(".list-card-title").textContent = `${vehicle.brand} ${vehicle.model}`;
     node.querySelector(".list-card-subtitle").textContent = subtitle;
     setBadge(node.querySelector(".list-card-status"), meta.label, meta.className);
     deleteButton.dataset.deleteVehicle = vehicle.id;
-    deleteButton.classList.toggle("hidden", mode !== "route");
+    deleteButton.classList.toggle("hidden", !canManageVehicles);
 
     fragment.appendChild(node);
   });
@@ -1045,46 +1254,115 @@ function renderVehicleList(container, vehicles, mode) {
   container.appendChild(fragment);
 }
 
-function renderCatalogOverview(vehicles) {
+function renderDashboardVehicleCards(container, vehicles) {
+  if (!vehicles.length) {
+    container.innerHTML = '<div class="empty-panel">No hay vehiculos disponibles.</div>';
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  const canManageVehicles = state.user?.role === "ADMIN";
+  vehicles.forEach((vehicle) => {
+    const publicMatch = state.catalogVehicles.find((item) => item.id === vehicle.id);
+    const meta = getStatusMeta(vehicle.currentStatus);
+    const operatorName = vehicle.assignedOperator || "Sin operador";
+    const card = document.createElement("article");
+    card.className = "dashboard-vehicle-card";
+    card.innerHTML = `
+      <div class="dashboard-vehicle-image-wrap">
+        <img class="dashboard-vehicle-image" alt="Vehiculo ${escapeAttribute(vehicle.plate)}" width="420" height="260" loading="lazy" decoding="async" />
+      </div>
+      <div class="dashboard-vehicle-body">
+        <div class="dashboard-vehicle-heading">
+          <div class="dashboard-vehicle-title">
+            <strong>${escapeHtml(vehicle.plate)}</strong>
+            <span class="status-pill dashboard-vehicle-status ${meta.className}">${escapeHtml(meta.label)}</span>
+          </div>
+          <span class="dashboard-vehicle-year">${escapeHtml(String(vehicle.year || "Sin anio"))}</span>
+        </div>
+        <div class="dashboard-vehicle-copy">
+          <span>${escapeHtml(`${vehicle.brand || ""} ${vehicle.model || ""}`.trim() || "Modelo no disponible")}</span>
+          <small>${escapeHtml(operatorName)}</small>
+        </div>
+      </div>
+      <div class="dashboard-vehicle-actions">
+        <button class="button button-secondary detail-button" type="button" data-private-vehicle="${escapeAttribute(vehicle.id)}">Ver informacion</button>
+        ${
+          canManageVehicles
+            ? `
+              <button class="button button-primary edit-info-button" type="button" data-edit-vehicle="${escapeAttribute(vehicle.id)}">Editar informacion</button>
+              <button class="button button-ghost delete-button" type="button" data-delete-vehicle="${escapeAttribute(vehicle.id)}">Eliminar</button>
+            `
+            : ""
+        }
+      </div>
+    `;
+
+    setVehicleImage(card.querySelector(".dashboard-vehicle-image"), publicMatch?.photoUrl, vehicle.plate, {
+      fallbackLabel: vehicle.plate,
+      width: 640,
+      widths: [320, 480, 640, 960],
+      sizes: "(max-width: 768px) calc(100vw - 56px), (max-width: 1200px) 50vw, 33vw",
+    });
+    fragment.appendChild(card);
+  });
+
+  container.innerHTML = "";
+  container.appendChild(fragment);
+}
+
+function applyCatalogStatusFilter(status) {
+  if (!elements.publicStatusFilter || !status) return;
+  elements.publicStatusFilter.value = status;
+  renderCurrentRoute();
+}
+
+function renderCatalogOverview(vehicles, activeStatus = "ALL") {
   if (!elements.catalogOverviewStats || !elements.catalogStatusViz || !elements.catalogDonutChart || !elements.catalogDonutTotal) {
     return;
   }
 
   const total = vehicles.length;
-  const available = vehicles.filter((vehicle) => vehicle.currentStatus === "AVAILABLE").length;
-  const maintenance = vehicles.filter((vehicle) => vehicle.currentStatus === "IN_MAINTENANCE").length;
-  const service = vehicles.filter((vehicle) => vehicle.currentStatus === "REGISTERED").length;
+  const statusEntries = [
+    { status: "AVAILABLE", label: "Disponibles", total: 0, color: "#22c55e" },
+    { status: "REGISTERED", label: "En servicio", total: 0, color: "#f59e0b" },
+    { status: "IN_MAINTENANCE", label: "En mantenimiento", total: 0, color: "#ef4444" },
+    { status: "OUT_OF_SERVICE", label: "Fuera de servicio", total: 0, color: "#f59e0b" },
+    { status: "SOLD", label: "Vendidos", total: 0, color: "#9ca3af" },
+  ].map((entry) => ({
+    ...entry,
+    total: vehicles.filter((vehicle) => vehicle.currentStatus === entry.status).length,
+  }));
 
   elements.catalogOverviewStats.innerHTML = `
-    <article class="catalog-mini-stat">
-      <strong>Disponibles:</strong>
-      <span>${available}</span>
-    </article>
-    <article class="catalog-mini-stat">
-      <strong>En servicio:</strong>
-      <span>${service}</span>
-    </article>
-    <article class="catalog-mini-stat">
-      <strong>En mantenimiento:</strong>
-      <span>${maintenance}</span>
-    </article>
+    ${statusEntries
+      .map(
+        (entry) => `
+          <button
+            class="catalog-mini-stat ${activeStatus === entry.status ? "active" : ""}"
+            type="button"
+            data-catalog-status-filter="${entry.status}"
+            aria-pressed="${activeStatus === entry.status ? "true" : "false"}"
+          >
+            <strong>${escapeHtml(entry.label)}:</strong>
+            <span>${entry.total}</span>
+          </button>
+        `
+      )
+      .join("")}
   `;
 
-  const statusEntries = [
-    { status: "AVAILABLE", total: available, color: "#22c55e" },
-    { status: "IN_MAINTENANCE", total: maintenance, color: "#ef4444" },
-    { status: "REGISTERED", total: service, color: "#f59e0b" },
-  ].filter((entry) => entry.total > 0);
+  const visibleStatusEntries = statusEntries.filter((entry) => entry.total > 0);
 
-  const chartStops = buildDonutStops(statusEntries, total);
+  const chartStops = buildDonutStops(visibleStatusEntries, total);
   elements.catalogDonutChart.style.setProperty(
     "--catalog-donut",
     chartStops || "conic-gradient(#e5e7eb 0deg 360deg)"
   );
   elements.catalogDonutTotal.textContent = String(total);
 
-  elements.catalogStatusViz.innerHTML = statusEntries.length
-    ? statusEntries
+  elements.catalogStatusViz.innerHTML = visibleStatusEntries.length
+    ? visibleStatusEntries
         .map((entry) => {
           const meta = getStatusMeta(entry.status);
           const percent = total ? Math.round((entry.total / total) * 100) : 0;
@@ -1121,11 +1399,6 @@ function buildDonutStops(entries, total) {
     .join(", ")})`;
 }
 
-function setMetricBar(element, percent) {
-  if (!element) return;
-  element.style.width = `${Math.max(0, Math.min(100, percent))}%`;
-}
-
 async function handleDeleteVehicle(vehicleId) {
   const vehicle = state.privateVehicles.find((item) => item.id === vehicleId);
   const label = vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.plate})` : "este vehiculo";
@@ -1146,8 +1419,9 @@ async function handleDeleteVehicle(vehicleId) {
 }
 
 async function handleDeleteOperator(operatorId) {
-  const operator = state.operators.find((item) => item.id === operatorId);
-  const label = operator ? `${operator.name} (${operator.email})` : "este operador";
+  const operator =
+    state.operators.find((item) => item.id === operatorId) || state.administrators.find((item) => item.id === operatorId);
+  const label = operator ? `${operator.name} (${operator.email})` : "este usuario";
   if (!window.confirm(`Vas a eliminar ${label}. Esta accion no se puede deshacer.`)) {
     return;
   }
@@ -1156,7 +1430,7 @@ async function handleDeleteOperator(operatorId) {
     await apiFetch(`/users/${operatorId}`, { method: "DELETE" });
     addSystemMessage("success", "Usuario eliminado", `${label} fue eliminado correctamente.`);
     pushToast("success", "Usuario eliminado correctamente.");
-    await loadOperators();
+    await Promise.all([loadOperators(), loadAdministrators()]);
   } catch (error) {
     pushToast("error", error.message);
     addSystemMessage("error", "Fallo al eliminar usuario", error.message);
@@ -1218,9 +1492,8 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
   const detailMode = options.detailMode || "summary";
   const userRole = state.user?.role;
   const isAdmin = userRole === "ADMIN";
-  const isOperator = userRole === "OPERADOR";
   const meta = getStatusMeta(vehicle.currentStatus);
-  const latestPhoto = vehicle.photos?.[0]?.url || placeholderImage(vehicle.plate);
+  const latestPhoto = vehicle.photos?.[0]?.url || "";
   const creator = vehicle.createdBy ? `${vehicle.createdBy.name} (${vehicle.createdBy.role})` : "Sin dato";
   const assignedOperator = vehicle.assignedOperator || "Sin asignar";
   const observations = vehicle.observations || "Sin observaciones";
@@ -1232,15 +1505,14 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
   const history = vehicle.statusHistory || [];
   const adminHistory = vehicle.adminHistory || [];
   const photos = vehicle.photos || [];
-  const canEditDetails = isAdmin || isOperator;
-  const canViewAdminHistory = isAdmin;
+  const canEditDetails = isAdmin;
+  const canViewAdminHistory = ["ADMIN", "DIRECTOR", "GERENTE"].includes(userRole);
   const complianceItems = [
     buildComplianceEntry("SOAT", vehicle.soatExpiry),
     buildComplianceEntry("Tecnomecanica", vehicle.tecnomecanicaExpiry),
     buildComplianceEntry("Impuesto vehicular", vehicle.vehicleTaxExpiry),
   ];
-  const detailFormFields = isAdmin
-    ? `
+  const detailFormFields = `
         <label>
           <span>Operador asignado</span>
           <input name="assignedOperator" value="${escapeAttribute(vehicle.assignedOperator || "")}" placeholder="Nombre del operador" />
@@ -1269,34 +1541,39 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
           <span>Multas</span>
           <input name="fines" value="${escapeAttribute(vehicle.fines || "")}" placeholder="Detalle de comparendos o saldo pendiente" />
         </label>
-      `
-    : `
-        <label>
-          <span>Vencimiento de SOAT</span>
-          <input name="soatExpiry" type="date" value="${escapeAttribute(formatDateInputValue(vehicle.soatExpiry))}" />
-        </label>
-        <label>
-          <span>Vencimiento Tecnomecanica</span>
-          <input name="tecnomecanicaExpiry" type="date" value="${escapeAttribute(formatDateInputValue(vehicle.tecnomecanicaExpiry))}" />
-        </label>
-        <label>
-          <span>Vencimiento Impuesto Vehicular</span>
-          <input name="vehicleTaxExpiry" type="date" value="${escapeAttribute(formatDateInputValue(vehicle.vehicleTaxExpiry))}" />
-        </label>
-        <label class="full-span">
-          <span>Multas</span>
-          <input name="fines" value="${escapeAttribute(vehicle.fines || "")}" placeholder="Detalle de comparendos o saldo pendiente" />
-        </label>
       `;
   return `
     <div class="vehicle-detail-layout detail-mode-${escapeAttribute(detailMode)}">
       <div class="vehicle-detail-head">
-        <img class="vehicle-detail-image" src="${escapeAttribute(latestPhoto)}" alt="Vehiculo ${escapeAttribute(vehicle.plate)}" />
+        <img ${vehicleImageAttributes(latestPhoto, vehicle.plate, {
+          className: "vehicle-detail-image",
+          width: 960,
+          widths: [480, 640, 960, 1280],
+          sizes: "(max-width: 768px) calc(100vw - 28px), 960px",
+          loading: "eager",
+        })} />
         <div>
           <p class="section-kicker">Vehiculo</p>
           <h3>${escapeHtml(vehicle.brand)} ${escapeHtml(vehicle.model)}</h3>
           <p class="message-copy">${escapeHtml(vehicle.plate)} • ${escapeHtml(String(vehicle.year))}</p>
           <span class="status-pill ${meta.className}">${escapeHtml(meta.label)}</span>
+          ${
+            canEditDetails && detailMode === "edit"
+              ? `
+                <form class="vehicle-status-inline" data-status-form="${vehicle.id}">
+                  <label>
+                    <span>Actualizar estado</span>
+                    <select name="statusType">
+                      ${Object.keys(STATUS_META)
+                        .map((status) => `<option value="${status}" ${status === vehicle.currentStatus ? "selected" : ""}>${STATUS_META[status].label}</option>`)
+                        .join("")}
+                    </select>
+                  </label>
+                  <small>Se guarda automaticamente al cambiar.</small>
+                </form>
+              `
+              : ""
+          }
         </div>
       </div>
 
@@ -1323,36 +1600,21 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
               <div class="section-header">
                 <div>
                   <p class="section-kicker">Administracion</p>
-                  <h3>${isOperator ? "Datos permitidos" : "Datos del vehiculo"}</h3>
+                  <h3>Datos del vehiculo</h3>
                 </div>
               </div>
               <form class="form-grid" data-details-form="${vehicle.id}">
                 ${detailFormFields}
-                <button class="button button-secondary full-span" type="submit">Guardar datos</button>
+                <button class="button button-primary full-span" type="submit">Guardar datos</button>
               </form>
             </div>
           `
           : ""
       }
 
-      <div class="vehicle-status-block">
-        <div class="section-header">
-          <div>
-            <p class="section-kicker">Actualizar</p>
-            <h3>Estado</h3>
-          </div>
-        </div>
-        <form class="inline-actions" data-status-form="${vehicle.id}">
-          <select name="statusType">
-            ${Object.keys(STATUS_META)
-              .map((status) => `<option value="${status}" ${status === vehicle.currentStatus ? "selected" : ""}>${STATUS_META[status].label}</option>`)
-              .join("")}
-          </select>
-          <input name="description" placeholder="Descripcion del cambio" />
-          <button class="button button-primary" type="submit">Guardar</button>
-        </form>
-      </div>
-
+      ${
+        canEditDetails
+          ? `
       <div class="vehicle-photo-upload-block">
         <div class="section-header">
           <div>
@@ -1365,6 +1627,9 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
           <button class="button button-secondary" type="submit">Subir foto</button>
         </form>
       </div>
+          `
+          : ""
+      }
 
       <div class="vehicle-gallery-block">
         <div class="section-header">
@@ -1381,17 +1646,27 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
                     (photo) => `
                       <article class="photo-card">
                         <a class="photo-card-link" href="${escapeAttribute(photo.url)}" target="_blank" rel="noreferrer">
-                          <img src="${escapeAttribute(photo.url)}" alt="Foto vehiculo" />
+                          <img ${vehicleImageAttributes(photo.url, vehicle.plate, {
+                            width: 320,
+                            widths: [160, 320],
+                            sizes: "132px",
+                          })} />
                         </a>
                         <div class="photo-card-body">
                           <span>${escapeHtml(photo.description || photo.fileName)}</span>
-                          <button
-                            class="button button-ghost photo-delete-button"
-                            type="button"
-                            data-delete-photo="${photo.id}"
-                          >
-                            Eliminar foto
-                          </button>
+                          ${
+                            canEditDetails
+                              ? `
+                                <button
+                                  class="button button-ghost photo-delete-button"
+                                  type="button"
+                                  data-delete-photo="${photo.id}"
+                                >
+                                  Eliminar foto
+                                </button>
+                              `
+                              : ""
+                          }
                         </div>
                       </article>
                     `
@@ -1505,61 +1780,74 @@ function attachVehicleDetailHandlers(container, vehicle, options = {}) {
     });
   }
 
-  statusForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
+  if (statusForm) {
+    const statusSelect = statusForm.querySelector('[name="statusType"]');
+    if (statusSelect) {
+      statusSelect.addEventListener("change", async () => {
+        if (statusSelect.value === vehicle.currentStatus) return;
+        statusSelect.disabled = true;
 
-    try {
-      await apiFetch(`/vehicles/${vehicle.id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          statusType: form.get("statusType"),
-          description: emptyToUndefined(form.get("description")),
-        }),
+        try {
+          await apiFetch(`/vehicles/${vehicle.id}/status`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              statusType: statusSelect.value,
+            }),
+          });
+
+          addSystemMessage("success", "Estado actualizado", `Se actualizo el estado de ${vehicle.plate}.`);
+          pushToast("success", "Estado actualizado automaticamente.");
+          await Promise.all([loadPublicCatalog(), loadPrivateVehicles()]);
+          if (options.panelMode) {
+            await renderVehicleDetailIntoContainer(vehicle.id, container, {
+              panelMode: true,
+              detailMode: options.detailMode || "summary",
+            });
+          } else {
+            await renderVehicleRoute(vehicle.id, { detailMode: options.detailMode || "summary" });
+          }
+        } catch (error) {
+          statusSelect.disabled = false;
+          statusSelect.value = vehicle.currentStatus;
+          pushToast("error", error.message);
+          addSystemMessage("error", "Fallo al actualizar estado", error.message);
+        }
       });
-
-      addSystemMessage("success", "Estado actualizado", `Se actualizo el estado de ${vehicle.plate}.`);
-      await Promise.all([loadPublicCatalog(), loadPrivateVehicles()]);
-      if (options.panelMode) {
-        await renderVehicleDetailIntoContainer(vehicle.id, container, {
-          panelMode: true,
-          detailMode: options.detailMode || "summary",
-        });
-      } else {
-        await renderVehicleRoute(vehicle.id, { detailMode: options.detailMode || "summary" });
-      }
-    } catch (error) {
-      pushToast("error", error.message);
-      addSystemMessage("error", "Fallo al actualizar estado", error.message);
     }
-  });
+  }
 
-  photoForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-
-    try {
-      await apiFetch(`/vehicles/${vehicle.id}/photos`, {
-        method: "POST",
-        body: form,
-        isMultipart: true,
-      });
-
-      addSystemMessage("success", "Foto cargada", `La galeria de ${vehicle.plate} fue actualizada.`);
-      await Promise.all([loadPublicCatalog(), loadPrivateVehicles()]);
-      if (options.panelMode) {
-        await renderVehicleDetailIntoContainer(vehicle.id, container, {
-          panelMode: true,
-          detailMode: options.detailMode || "summary",
-        });
-      } else {
-        await renderVehicleRoute(vehicle.id, { detailMode: options.detailMode || "summary" });
+  if (photoForm) {
+    photoForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      const photoFile = form.get("photo");
+      if (photoFile instanceof File && photoFile.size > 0) {
+        form.set("photo", await optimizeImageFile(photoFile));
       }
-    } catch (error) {
-      pushToast("error", error.message);
-      addSystemMessage("error", "Fallo al subir foto", error.message);
-    }
-  });
+
+      try {
+        await apiFetch(`/vehicles/${vehicle.id}/photos`, {
+          method: "POST",
+          body: form,
+          isMultipart: true,
+        });
+
+        addSystemMessage("success", "Foto cargada", `La galeria de ${vehicle.plate} fue actualizada.`);
+        await Promise.all([loadPublicCatalog(), loadPrivateVehicles()]);
+        if (options.panelMode) {
+          await renderVehicleDetailIntoContainer(vehicle.id, container, {
+            panelMode: true,
+            detailMode: options.detailMode || "summary",
+          });
+        } else {
+          await renderVehicleRoute(vehicle.id, { detailMode: options.detailMode || "summary" });
+        }
+      } catch (error) {
+        pushToast("error", error.message);
+        addSystemMessage("error", "Fallo al subir foto", error.message);
+      }
+    });
+  }
 
   deletePhotoButtons.forEach((button) => {
     button.addEventListener("click", async () => {
@@ -1612,11 +1900,13 @@ async function handleLogin(event) {
 
     state.token = response.token;
     state.user = response.user;
-    localStorage.setItem("fleet_token", state.token);
-    localStorage.setItem("fleet_user", JSON.stringify(state.user));
+    localStorage.setItem(STORAGE_KEYS.token, state.token);
+    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(state.user));
+    localStorage.removeItem(STORAGE_KEYS.legacyToken);
+    localStorage.removeItem(STORAGE_KEYS.legacyUser);
     addSystemMessage("success", "Sesion iniciada", `${state.user.name} entro como ${state.user.role}.`);
     await loadPrivateData();
-    navigate("/dashboard", { replace: true });
+    navigate(getDefaultPrivateRoute(), { replace: true });
     pushToast("success", "Sesion iniciada correctamente.");
   } catch (_error) {
     pushToast("error", "Usuario o contrasena incorrectos");
@@ -1629,8 +1919,12 @@ function handleLogout() {
   state.privateVehicles = [];
   state.operators = [];
   state.administrators = [];
-  localStorage.removeItem("fleet_token");
-  localStorage.removeItem("fleet_user");
+  state.financeRecords = [];
+  state.financeSummary = { income: 0, expenses: 0, balance: 0, byType: {} };
+  localStorage.removeItem(STORAGE_KEYS.token);
+  localStorage.removeItem(STORAGE_KEYS.user);
+  localStorage.removeItem(STORAGE_KEYS.legacyToken);
+  localStorage.removeItem(STORAGE_KEYS.legacyUser);
   closeMobileSidebar();
   navigate("/", { replace: true });
   pushToast("info", "Sesion cerrada.");
@@ -1683,7 +1977,7 @@ async function handleRequestProfileEmailVerification(event) {
     });
 
     state.user = response.user;
-    localStorage.setItem("fleet_user", JSON.stringify(state.user));
+    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(state.user));
     renderCurrentRoute();
     pushToast("success", response.message || "Codigo enviado correctamente.");
   } catch (error) {
@@ -1711,7 +2005,7 @@ async function handleConfirmProfileEmailVerification(event) {
     });
 
     state.user = response.user;
-    localStorage.setItem("fleet_user", JSON.stringify(state.user));
+    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(state.user));
     renderCurrentRoute();
     pushToast("success", response.message || "Correo verificado correctamente.");
   } catch (error) {
@@ -1722,7 +2016,7 @@ async function handleConfirmProfileEmailVerification(event) {
 
 async function handleCreateVehicle(event) {
   event.preventDefault();
-  if (!state.token) return;
+  if (!state.token || state.user?.role !== "ADMIN") return;
 
   const formElement = event.currentTarget;
   const form = new FormData(formElement);
@@ -1745,8 +2039,9 @@ async function handleCreateVehicle(event) {
 
     const photoFile = form.get("photo");
     if (photoFile instanceof File && photoFile.size > 0) {
+      const optimizedPhotoFile = await optimizeImageFile(photoFile);
       const photoForm = new FormData();
-      photoForm.append("photo", photoFile);
+      photoForm.append("photo", optimizedPhotoFile);
 
       await apiFetch(`/vehicles/${createdVehicle.id}/photos`, {
         method: "POST",
@@ -1782,6 +2077,119 @@ async function handleCreateVehicle(event) {
   }
 }
 
+async function handleCreateFinanceRecord(event) {
+  event.preventDefault();
+  if (!canAccessFinance()) return;
+
+  const formElement = event.currentTarget;
+  const form = new FormData(formElement);
+
+  setFormBusy(formElement, true, "Guardando movimiento...");
+
+  try {
+    const dateValue = String(form.get("date") || "");
+    await apiFetch("/finance", {
+      method: "POST",
+      body: JSON.stringify({
+        type: String(form.get("type")),
+        concept: String(form.get("concept")).trim(),
+        amount: Number(form.get("amount")),
+        date: dateInputToIsoString(dateValue),
+        client: emptyToUndefined(form.get("client")),
+        vehicleId: emptyToUndefined(form.get("vehicleId")),
+        observations: emptyToUndefined(form.get("observations")),
+        costPerKm: emptyToUndefined(form.get("costPerKm")),
+        averageFreight: emptyToUndefined(form.get("averageFreight")),
+        associatedCosts: emptyToUndefined(form.get("associatedCosts")),
+      }),
+    });
+
+    formElement.reset();
+    addSystemMessage("success", "Movimiento financiero creado", "El registro fue guardado correctamente.");
+    pushToast("success", "Movimiento financiero guardado.");
+    await loadFinanceData({ force: true });
+  } catch (error) {
+    pushToast("error", error.message);
+    addSystemMessage("error", "Fallo al guardar movimiento financiero", error.message);
+  } finally {
+    setFormBusy(formElement, false);
+  }
+}
+
+async function handleDeleteFinanceRecord(recordId) {
+  if (!canAccessFinance()) return;
+
+  const record = state.financeRecords.find((item) => item.id === recordId);
+  const label = record ? record.concept : "este movimiento";
+  if (!window.confirm(`Vas a eliminar ${label}. Esta accion no se puede deshacer.`)) {
+    return;
+  }
+
+  try {
+    await apiFetch(`/finance/${recordId}`, { method: "DELETE" });
+    addSystemMessage("success", "Movimiento financiero eliminado", `${label} fue eliminado correctamente.`);
+    pushToast("success", "Movimiento financiero eliminado.");
+    await loadFinanceData({ force: true });
+  } catch (error) {
+    pushToast("error", error.message);
+    addSystemMessage("error", "Fallo al eliminar movimiento financiero", error.message);
+  }
+}
+
+async function handleEditFinanceRecord(recordId) {
+  if (!canAccessFinance()) return;
+
+  const record = state.financeRecords.find((item) => item.id === recordId);
+  if (!record) return;
+
+  const nextType = window.prompt(
+    "Tipo (INGRESO, EGRESO, FLETE, COMPRA_VEHICULO, VENTA_VEHICULO, COSTO_OPERATIVO, MANTENIMIENTO)",
+    record.type
+  );
+  if (nextType === null) return;
+
+  const nextConcept = window.prompt("Concepto", record.concept);
+  if (nextConcept === null) return;
+
+  const nextAmount = window.prompt("Valor", String(record.amount || 0));
+  if (nextAmount === null) return;
+
+  const nextDate = window.prompt("Fecha (YYYY-MM-DD)", formatDateInputValue(record.date));
+  if (nextDate === null) return;
+
+  const normalizedType = nextType.trim().toUpperCase();
+  const normalizedAmount = Number(nextAmount);
+  if (
+    !["INGRESO", "EGRESO", "FLETE", "COMPRA_VEHICULO", "VENTA_VEHICULO", "COSTO_OPERATIVO", "MANTENIMIENTO"].includes(
+      normalizedType
+    ) ||
+    !nextConcept.trim() ||
+    Number.isNaN(normalizedAmount)
+  ) {
+    pushToast("error", "Tipo, concepto y valor deben ser validos.");
+    return;
+  }
+
+  try {
+    await apiFetch(`/finance/${recordId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        type: normalizedType,
+        concept: nextConcept.trim(),
+        amount: normalizedAmount,
+        date: dateInputToIsoString(nextDate),
+      }),
+    });
+
+    addSystemMessage("success", "Movimiento financiero actualizado", `${nextConcept.trim()} fue actualizado correctamente.`);
+    pushToast("success", "Movimiento financiero actualizado.");
+    await loadFinanceData({ force: true });
+  } catch (error) {
+    pushToast("error", error.message);
+    addSystemMessage("error", "Fallo al actualizar movimiento financiero", error.message);
+  }
+}
+
 function setFormBusy(formElement, isBusy, buttonLabel = "Procesando...") {
   const controls = formElement.querySelectorAll("input, select, textarea, button");
   controls.forEach((control) => {
@@ -1811,6 +2219,107 @@ function setButtonLoading(button, isLoading, loadingText) {
   button.classList.remove("is-loading");
   button.removeAttribute("aria-busy");
   button.textContent = button.dataset.defaultLabel;
+}
+
+async function optimizeImageFile(file) {
+  if (!file.type.startsWith("image/") || file.type === "image/gif" || file.size < 350 * 1024) {
+    return file;
+  }
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxSide = 1600;
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) return file;
+    context.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+
+    const blob = await canvasToBlob(canvas, "image/webp", 0.82) || await canvasToBlob(canvas, "image/jpeg", 0.82);
+    if (!blob || blob.size >= file.size) return file;
+
+    const extension = blob.type === "image/webp" ? "webp" : "jpg";
+    const optimizedName = file.name.replace(/\.[^.]+$/, `.${extension}`);
+    return new File([blob], optimizedName, { type: blob.type, lastModified: Date.now() });
+  } catch (_error) {
+    return file;
+  }
+}
+
+async function handleEditUser(userId) {
+  const user = state.operators.find((item) => item.id === userId);
+  if (!user || state.user?.role !== "ADMIN") return;
+
+  const nextName = window.prompt("Nombre del usuario", user.name);
+  if (nextName === null) return;
+
+  const nextIdentifier = window.prompt("Email o identificador del usuario", user.email);
+  if (nextIdentifier === null) return;
+
+  const nextRole = window.prompt("Rol del usuario (DIRECTOR o GERENTE)", user.role);
+  if (nextRole === null) return;
+
+  const nextPassword = window.prompt("Nueva contrasena (deja vacio para no cambiarla)", "");
+  if (nextPassword === null) return;
+
+  const trimmedName = nextName.trim();
+  const trimmedIdentifier = nextIdentifier.trim();
+  const normalizedRole = nextRole.trim().toUpperCase();
+  if (!trimmedName || !trimmedIdentifier || !["DIRECTOR", "GERENTE"].includes(normalizedRole)) {
+    pushToast("error", "Nombre, usuario y rol valido son obligatorios.");
+    return;
+  }
+
+  try {
+    await apiFetch(`/users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        name: trimmedName,
+        identifier: trimmedIdentifier,
+        role: normalizedRole,
+        ...(nextPassword.trim() ? { password: nextPassword.trim() } : {}),
+      }),
+    });
+
+    addSystemMessage("success", "Usuario actualizado", `${trimmedName} fue actualizado correctamente.`);
+    pushToast("success", "Usuario actualizado correctamente.");
+    await loadOperators();
+  } catch (error) {
+    pushToast("error", error.message);
+    addSystemMessage("error", "Fallo al actualizar usuario", error.message);
+  }
+}
+
+async function loadFinanceData(options = {}) {
+  const { silent = false } = options;
+  if (!canAccessFinance()) return;
+  if (state.refreshLocks.finance) return;
+  state.refreshLocks.finance = true;
+
+  try {
+    const [records, summary] = await Promise.all([apiFetch("/finance"), apiFetch("/finance/summary")]);
+    state.financeRecords = records;
+    state.financeSummary = summary;
+    renderCurrentRoute();
+  } catch (error) {
+    if (!silent) {
+      pushToast("error", error.message);
+    }
+  } finally {
+    state.refreshLocks.finance = false;
+  }
+}
+
+function canvasToBlob(canvas, mimeType, quality) {
+  return new Promise((resolve) => {
+    canvas.toBlob(resolve, mimeType, quality);
+  });
 }
 
 function toggleSidebar() {
@@ -1968,12 +2477,81 @@ function buildErrorMessage(data) {
   return data.message || "La solicitud fallo.";
 }
 
+function isVehicleUploadUrl(url) {
+  return typeof url === "string" && url.startsWith("/uploads/vehicles/");
+}
+
+function vehicleImageUrl(url, width) {
+  if (!isVehicleUploadUrl(url)) return url;
+
+  try {
+    const fileName = decodeURIComponent(url.split("/").pop() || "");
+    return `/images/vehicles/${encodeURIComponent(fileName)}?w=${width}`;
+  } catch (_error) {
+    return url;
+  }
+}
+
+function vehicleImageSrcSet(url, widths) {
+  if (!isVehicleUploadUrl(url)) return "";
+  return widths.map((width) => `${vehicleImageUrl(url, width)} ${width}w`).join(", ");
+}
+
+function setVehicleImage(image, url, plate, options = {}) {
+  const {
+    fallbackLabel = plate,
+    width = 480,
+    widths = [320, 480, 640],
+    sizes = "100vw",
+  } = options;
+  const source = url || placeholderImage(fallbackLabel);
+
+  image.src = vehicleImageUrl(source, width);
+  image.alt = `Vehiculo ${plate}`;
+
+  const srcset = vehicleImageSrcSet(source, widths);
+  if (srcset) {
+    image.srcset = srcset;
+    image.sizes = sizes;
+  } else {
+    image.removeAttribute("srcset");
+    image.removeAttribute("sizes");
+  }
+}
+
+function vehicleImageAttributes(url, plate, options = {}) {
+  const {
+    width = 960,
+    widths = [480, 640, 960, 1280],
+    sizes = "100vw",
+    className = "",
+    loading = "lazy",
+  } = options;
+  const source = url || placeholderImage(plate);
+  const src = vehicleImageUrl(source, width);
+  const srcset = vehicleImageSrcSet(source, widths);
+  const srcsetAttribute = srcset ? ` srcset="${escapeAttribute(srcset)}" sizes="${escapeAttribute(sizes)}"` : "";
+  const classAttribute = className ? ` class="${escapeAttribute(className)}"` : "";
+
+  return `src="${escapeAttribute(src)}"${srcsetAttribute}${classAttribute} alt="Vehiculo ${escapeAttribute(
+    plate
+  )}" loading="${escapeAttribute(loading)}" decoding="async"`;
+}
+
 function placeholderImage(label) {
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
-      <rect width="600" height="400" fill="#EAF2FB" />
+      <rect width="600" height="400" fill="#ffffff" />
+      <rect width="600" height="400" fill="url(#placeholderGlow)" opacity="0.82" />
+      <defs>
+        <radialGradient id="placeholderGlow" cx="50%" cy="40%" r="65%">
+          <stop offset="0%" stop-color="#ffffff" />
+          <stop offset="58%" stop-color="#2db5e8" stop-opacity="0.12" />
+          <stop offset="100%" stop-color="#1f7ae0" stop-opacity="0.08" />
+        </radialGradient>
+      </defs>
       <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
-        fill="#1F7AE0" font-family="Arial, sans-serif" font-size="42">${escapeHtml(label)}</text>
+        fill="#1f7ae0" font-family="Arial, sans-serif" font-size="42">${escapeHtml(label)}</text>
     </svg>
   `;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
@@ -2100,6 +2678,48 @@ function emptyToUndefined(value) {
   return normalized ? normalized : undefined;
 }
 
+function canAccessFinance() {
+  return state.user?.role === "GERENTE" || isPrimaryAdminUser();
+}
+
+function getDefaultPrivateRoute() {
+  if (canAccessFinance() && state.user?.role === "GERENTE") {
+    return "/finanzas";
+  }
+
+  if (state.user?.role === "ADMIN") {
+    return "/dashboard";
+  }
+
+  return "/catalogo";
+}
+
+function isFinanceIncome(type) {
+  return ["INGRESO", "FLETE", "VENTA_VEHICULO"].includes(type);
+}
+
+function getFinanceTypeLabel(type) {
+  const labels = {
+    INGRESO: "Ingreso",
+    EGRESO: "Egreso",
+    FLETE: "Flete",
+    COMPRA_VEHICULO: "Compra de vehiculo",
+    VENTA_VEHICULO: "Venta de vehiculo",
+    COSTO_OPERATIVO: "Costo operativo",
+    MANTENIMIENTO: "Mantenimiento",
+  };
+
+  return labels[type] || type;
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
+
 function readJson(key) {
   try {
     const rawValue = localStorage.getItem(key);
@@ -2110,7 +2730,7 @@ function readJson(key) {
 }
 
 function isPrimaryAdminUser() {
-  return state.user?.id === "admin-origenes-001" && state.user?.email === "admin@origenesfleet.com";
+  return PRIMARY_ADMIN_IDS.includes(state.user?.id) && PRIMARY_ADMIN_EMAILS.includes(String(state.user?.email || "").toLowerCase());
 }
 
 function escapeHtml(value) {

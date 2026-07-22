@@ -6,6 +6,8 @@ const asyncHandler = require("../../utils/asyncHandler");
 const { normalizeIdentifier } = require("../../utils/identity");
 const { isPrimaryAdmin } = require("../../utils/adminAccess");
 const { sendVerificationCode } = require("../../utils/mailer");
+const { createAuditLog } = require("../../services/auditLog");
+const { ROLES } = require("../../utils/permissions");
 
 const EMAIL_CODE_TTL_MS = 30 * 60 * 1000;
 const EMAIL_CODE_COOLDOWN_MS = 60 * 1000;
@@ -34,6 +36,26 @@ const normalizeContactEmail = (value) => {
 };
 
 const createVerificationCode = () => String(crypto.randomInt(0, 10000)).padStart(4, "0");
+
+const userListSelect = {
+  id: true,
+  name: true,
+  email: true,
+  contactEmail: true,
+  contactEmailVerified: true,
+  role: true,
+  isActive: true,
+  createdAt: true,
+  _count: {
+    select: {
+      vehicles: true,
+      statusUpdates: true,
+      adminUpdates: true,
+      photos: true,
+      financeRecords: true,
+    },
+  },
+};
 
 const serializeCurrentUser = (user) => {
   const { emailVerification, ...safeUser } = user;
@@ -71,29 +93,64 @@ const ensureContactEmailIsAvailable = async (contactEmail, userId) => {
   }
 };
 
+function assertCanManageUserRole(requestUser, targetRole, action = "administrar") {
+  if (targetRole === ROLES.ADMIN && !isPrimaryAdmin(requestUser)) {
+    throw new ApiError(403, `Solo el administrador principal puede ${action} administradores`);
+  }
+}
+
+const listUsers = asyncHandler(async (req, res) => {
+  const where = isPrimaryAdmin(req.user) ? {} : { role: { not: ROLES.ADMIN } };
+
+  const users = await prisma.user.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    select: userListSelect,
+  });
+
+  return res.json(users);
+});
+
 const createUser = asyncHandler(async (req, res) => {
   const { name, identifier, password, role } = req.body;
+
+  assertCanManageUserRole(req.user, role, "crear");
 
   const passwordHash = await bcrypt.hash(password, 10);
   const normalizedIdentifier = normalizeIdentifier(identifier);
 
-  const user = await prisma.user.create({
-    data: {
-      name,
-      email: normalizedIdentifier,
-      passwordHash,
-      role,
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      contactEmail: true,
-      contactEmailVerified: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
-    },
+  const user = await prisma.$transaction(async (tx) => {
+    const createdUser = await tx.user.create({
+      data: {
+        name,
+        email: normalizedIdentifier,
+        passwordHash,
+        role,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        contactEmail: true,
+        contactEmailVerified: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    await createAuditLog(
+      {
+        userId: req.user.id,
+        action: "CREATE",
+        entity: "User",
+        entityId: createdUser.id,
+        newValue: createdUser,
+      },
+      tx
+    );
+
+    return createdUser;
   });
 
   return res.status(201).json(user);
@@ -230,41 +287,44 @@ const confirmCurrentUserEmailVerification = asyncHandler(async (req, res) => {
 const deleteUser = asyncHandler(async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.params.id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      contactEmail: true,
-      contactEmailVerified: true,
-      role: true,
-      _count: {
-        select: {
-          vehicles: true,
-          statusUpdates: true,
-          photos: true,
-        },
-      },
-    },
+    select: userListSelect,
   });
 
   if (!user) {
     throw new ApiError(404, "Usuario no encontrado");
   }
 
-  if (user.role !== "OPERADOR") {
-    throw new ApiError(400, "Solo se pueden eliminar operadores");
-  }
+  assertCanManageUserRole(req.user, user.role, "eliminar");
 
   if (req.user.id === user.id) {
     throw new ApiError(400, "No puedes eliminar tu propio usuario");
   }
 
-  if (user._count.vehicles || user._count.statusUpdates || user._count.photos) {
-    throw new ApiError(409, "No se puede eliminar el operador porque tiene informacion relacionada");
+  if (
+    user._count.vehicles ||
+    user._count.statusUpdates ||
+    user._count.adminUpdates ||
+    user._count.photos ||
+    user._count.financeRecords
+  ) {
+    throw new ApiError(409, "No se puede eliminar el usuario porque tiene informacion relacionada");
   }
 
-  await prisma.user.delete({
-    where: { id: user.id },
+  await prisma.$transaction(async (tx) => {
+    await tx.user.delete({
+      where: { id: user.id },
+    });
+
+    await createAuditLog(
+      {
+        userId: req.user.id,
+        action: "DELETE",
+        entity: "User",
+        entityId: user.id,
+        oldValue: user,
+      },
+      tx
+    );
   });
 
   return res.json({
@@ -292,6 +352,11 @@ const updateUser = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Usuario no encontrado");
   }
 
+  assertCanManageUserRole(req.user, existingUser.role, "editar");
+  if (req.body.role) {
+    assertCanManageUserRole(req.user, req.body.role, "asignar");
+  }
+
   if (req.user.id === existingUser.id && req.body.isActive === false) {
     throw new ApiError(400, "No puedes desactivar tu propio usuario");
   }
@@ -310,29 +375,51 @@ const updateUser = asyncHandler(async (req, res) => {
     data.passwordHash = await bcrypt.hash(req.body.password, 10);
   }
 
+  if (typeof req.body.role === "string") {
+    data.role = req.body.role;
+  }
+
   if (typeof req.body.isActive === "boolean") {
     data.isActive = req.body.isActive;
   }
 
-  const updatedUser = await prisma.user.update({
-    where: { id: existingUser.id },
-    data,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      contactEmail: true,
-      contactEmailVerified: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
-    },
+  const updatedUser = await prisma.$transaction(async (tx) => {
+    const updated = await tx.user.update({
+      where: { id: existingUser.id },
+      data,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        contactEmail: true,
+        contactEmailVerified: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    await createAuditLog(
+      {
+        userId: req.user.id,
+        action: "UPDATE",
+        entity: "User",
+        entityId: updated.id,
+        oldValue: existingUser,
+        newValue: updated,
+        metadata: { changedFields: Object.keys(data) },
+      },
+      tx
+    );
+
+    return updated;
   });
 
   return res.json(updatedUser);
 });
 
 module.exports = {
+  listUsers,
   createUser,
   getCurrentUser,
   requestCurrentUserEmailVerification,

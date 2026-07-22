@@ -14,7 +14,18 @@ datasource db {
 
 enum Role {
   ADMIN
-  OPERADOR
+  DIRECTOR
+  GERENTE
+}
+
+enum FinanceRecordType {
+  INGRESO
+  EGRESO
+  FLETE
+  COMPRA_VEHICULO
+  VENTA_VEHICULO
+  COSTO_OPERATIVO
+  MANTENIMIENTO
 }
 
 enum VehicleStatusType {
@@ -32,7 +43,7 @@ model User {
   contactEmail  String?                @unique
   contactEmailVerified Boolean          @default(false)
   passwordHash  String
-  role          Role                   @default(OPERADOR)
+  role          Role                   @default(DIRECTOR)
   isActive      Boolean                @default(true)
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
@@ -42,6 +53,49 @@ model User {
   photos        VehiclePhoto[]         @relation("PhotoUploader")
   emailVerification EmailVerification?
   complianceNotifications VehicleComplianceNotification[]
+  financeRecords FinanceRecord[]       @relation("FinanceRecordCreator")
+  auditLogs     AuditLog[]              @relation("AuditLogUser")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation("AuditLogUser", fields: [userId], references: [id], onDelete: SetNull)
+  action      String
+  entity      String
+  entityId    String?
+  oldValue    String?  @db.Text
+  newValue    String?  @db.Text
+  metadata    String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model FinanceRecord {
+  id            String            @id @default(cuid())
+  type          FinanceRecordType
+  concept       String
+  amount        Decimal           @db.Decimal(14, 2)
+  date          DateTime
+  client        String?
+  vehicleId     String?
+  vehicle       Vehicle?          @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  observations  String?
+  costPerKm     Decimal?          @db.Decimal(14, 2)
+  averageFreight Decimal?         @db.Decimal(14, 2)
+  associatedCosts String?
+  createdById   String
+  createdBy     User              @relation("FinanceRecordCreator", fields: [createdById], references: [id])
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([type])
+  @@index([date])
+  @@index([vehicleId])
+  @@index([createdById])
 }
 
 model EmailVerification {
@@ -82,6 +136,7 @@ model Vehicle {
   adminHistory  VehicleAdminHistory[]
   photos        VehiclePhoto[]
   complianceNotifications VehicleComplianceNotification[]
+  financeRecords FinanceRecord[]
 
   @@index([plate])
   @@index([createdById])

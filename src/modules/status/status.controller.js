@@ -1,6 +1,7 @@
 const prisma = require("../../config/prisma");
 const ApiError = require("../../utils/apiError");
 const asyncHandler = require("../../utils/asyncHandler");
+const { createAuditLog } = require("../../services/auditLog");
 
 const updateVehicleStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -8,15 +9,11 @@ const updateVehicleStatus = asyncHandler(async (req, res) => {
 
   const vehicle = await prisma.vehicle.findUnique({
     where: { id },
-    select: { id: true, createdById: true, currentStatus: true },
+    select: { id: true, currentStatus: true },
   });
 
   if (!vehicle) {
     throw new ApiError(404, "Vehicle not found");
-  }
-
-  if (req.user.role !== "ADMIN" && vehicle.createdById !== req.user.id) {
-    throw new ApiError(403, "You do not have access to update this vehicle");
   }
 
   const result = await prisma.$transaction(async (tx) => {
@@ -35,6 +32,19 @@ const updateVehicleStatus = asyncHandler(async (req, res) => {
         updatedById: req.user.id,
       },
     });
+
+    await createAuditLog(
+      {
+        userId: req.user.id,
+        action: "UPDATE",
+        entity: "Vehicle",
+        entityId: id,
+        oldValue: { currentStatus: vehicle.currentStatus },
+        newValue: { currentStatus: statusType },
+        metadata: { description },
+      },
+      tx
+    );
 
     return history;
   });

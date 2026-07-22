@@ -13,6 +13,8 @@ Variables necesarias:
 - `DATABASE_URL` (MySQL remoto)
 - `PORT`
 - `NODE_ENV`
+- `APP_NAME`
+- `APP_URL`
 - `JWT_SECRET`
 - `JWT_EXPIRES_IN`
 - `ADMIN_NAME`
@@ -24,6 +26,8 @@ Ejemplo:
 DATABASE_URL="mysql://usuario:clave@srv1665.hstgr.io:3306/u122249446_bdCarros17"
 PORT=3000
 NODE_ENV=production
+APP_NAME="Grupo w logist"
+APP_URL=https://grupowlogist.com/
 JWT_SECRET=tu_clave_secreta
 JWT_EXPIRES_IN=8h
 ```

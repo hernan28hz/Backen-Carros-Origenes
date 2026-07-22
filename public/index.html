@@ -3,30 +3,46 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Origenes Fleet</title>
+    <title>GRUPO W LOGIST</title>
     <meta
       name="description"
-      content="Origenes Fleet es la plataforma para consultar y gestionar el inventario de vehiculos de la flota."
+      content="Grupo w logist es la plataforma para consultar y gestionar el inventario de vehiculos de la flota."
     />
-    <link rel="icon" type="image/png" href="/media/iconbgblanco.png" />
-    <link rel="apple-touch-icon" href="/media/iconbgblanco.png" />
+    <link rel="canonical" href="https://grupowlogist.com/" />
+    <link rel="icon" type="image/png" href="/media/iconGrupoW.png" />
+    <link rel="apple-touch-icon" href="/media/iconGrupoW.png" />
     <meta property="og:locale" content="es_CO" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Origenes Fleet" />
+    <meta property="og:title" content="Grupo w logist" />
+    <meta property="og:url" content="https://grupowlogist.com/" />
     <meta
       property="og:description"
-      content="Origenes Fleet es la plataforma para consultar y gestionar el inventario de vehiculos de la flota."
+      content="Grupo w logist es la plataforma para consultar y gestionar el inventario de vehiculos de la flota."
     />
-    <meta property="og:image" content="/media/IconoInst.jpg" />
+    <meta property="og:image" content="https://grupowlogist.com/media/membreteW.png" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Origenes Fleet" />
+    <meta name="twitter:title" content="Grupo w logist" />
     <meta
       name="twitter:description"
-      content="Origenes Fleet es la plataforma para consultar y gestionar el inventario de vehiculos de la flota."
+      content="Grupo w logist es la plataforma para consultar y gestionar el inventario de vehiculos de la flota."
     />
-    <meta name="twitter:image" content="/media/IconoInst.jpg" />
-    <link rel="stylesheet" href="/styles.css?v=1.5" />
+    <meta name="twitter:image" content="https://grupowlogist.com/media/membreteW.png" />
+    <link
+      rel="preload"
+      as="image"
+      href="/media/logobgicon-1280.webp"
+      imagesrcset="/media/logobgicon-768.webp 768w, /media/logobgicon-1280.webp 1280w"
+      imagesizes="100vw"
+    />
+    <link
+      rel="preload"
+      as="image"
+      href="/media/membreteW-360.webp"
+      imagesrcset="/media/membreteW-360.webp 360w, /media/membreteW-640.webp 640w"
+      imagesizes="(max-width: 768px) 142px, 190px"
+    />
+    <link rel="stylesheet" href="/styles.css?v=1.7" />
   </head>
   <body>
     <div id="pullToRefreshIndicator" class="pull-refresh-indicator" aria-live="polite">
@@ -36,30 +52,43 @@
       <span class="mobile-sidebar-button-icon">☰</span>
     </button>
     <div id="mobileSidebarBackdrop" class="mobile-sidebar-backdrop hidden"></div>
-    <div id="appShell" class="app-shell">
+    <div id="appShell" class="app-shell public-route home-route">
       <aside id="sidebar" class="sidebar expanded">
         <div class="sidebar-top">
           <div class="sidebar-brand">
             <button id="sidebarToggleButton" class="icon-button sidebar-toggle-brand" type="button" aria-label="Colapsar menu">
-              <img class="toggle-logo-image" src="/media/IconoInst.jpg" alt="Icono menu" />
+              <img class="toggle-logo-image" src="/media/iconGrupoW-160.webp" alt="Grupo W" width="46" height="46" decoding="async" />
             </button>
             <div class="sidebar-brand-text">
               <p id="sidebarBrandKicker" class="brand-kicker">Navegacion</p>
-              <strong id="sidebarBrandTitle">Origenes Fleet</strong>
+              <strong id="sidebarBrandTitle">GRUPO W LOGIST</strong>
             </div>
           </div>
         </div>
 
         <div class="sidebar-middle">
-          <p id="sidebarSectionLabel" class="sidebar-section-label">Principal</p>
-          <nav id="sidebarNav" class="sidebar-nav"></nav>
+          <p id="sidebarSectionLabel" class="sidebar-section-label">Explorar</p>
+          <nav id="sidebarNav" class="sidebar-nav">
+            <a class="sidebar-link active" href="/">
+              <span class="sidebar-icon">I</span>
+              <span class="sidebar-label">Inicio</span>
+            </a>
+            <a class="sidebar-link" href="/catalogo">
+              <span class="sidebar-icon">C</span>
+              <span class="sidebar-label">Catalogo</span>
+            </a>
+            <a class="sidebar-link" href="/login">
+              <span class="sidebar-icon">&gt;</span>
+              <span class="sidebar-label">Iniciar sesion</span>
+            </a>
+          </nav>
         </div>
 
         <div class="sidebar-footer">
           <div class="sidebar-divider"></div>
           <span id="sidebarRoleBadge" class="status-pill neutral">Visitante</span>
           <div id="sidebarUserCard" class="sidebar-user-card hidden">
-            <div id="sidebarUserAvatar" class="sidebar-user-avatar">OF</div>
+            <div id="sidebarUserAvatar" class="sidebar-user-avatar">GW</div>
             <div class="sidebar-user-info">
               <strong id="sidebarUserName">Visitante</strong>
               <span id="sidebarUserMeta">Navegacion publica</span>
@@ -86,18 +115,32 @@
         </header>
 
         <main class="app-main">
-          <section id="homePage" class="route-page hidden">
+          <section id="homePage" class="route-page">
+            <section class="brand-hero">
+              <div class="brand-hero-content">
+                <img
+                  class="brand-hero-logo"
+                  src="/media/membreteW-360.webp"
+                  srcset="/media/membreteW-360.webp 360w, /media/membreteW-640.webp 640w"
+                  sizes="(max-width: 768px) 142px, 190px"
+                  alt="Grupo W Servicios Corporativos"
+                  width="190"
+                  height="150"
+                  fetchpriority="high"
+                  decoding="async"
+                />
+                <div>
+                  <p class="section-kicker">Servicios corporativos</p>
+                  <h1>GRUPO W LOGIST</h1>
+                  <p class="hero-copy">Consulta y gestiona la flota con una experiencia mas sobria, clara y alineada a la nueva identidad.</p>
+                </div>
+              </div>
+            </section>
             <div id="homeCatalogPreview" class="public-vehicle-grid"></div>
           </section>
 
           <section id="catalogPage" class="route-page hidden">
             <section class="section-block">
-              <article class="card hero-card-main">
-                <p class="section-kicker">Sistema de gestion</p>
-                <h2>Flota de Vehiculos.</h2>
-                <p class="hero-copy">El catalogo muestra los vehiculos disponibles para consulta general.</p>
-              </article>
-
               <div class="catalog-analytics">
                 <article class="card catalog-status-card">
                   <div class="catalog-donut-wrap">
@@ -147,6 +190,7 @@
 
           <section id="loginPage" class="route-page hidden auth-page">
             <article class="card auth-card">
+              <img class="auth-logo" src="/media/iconGrupoW-160.webp" alt="Grupo W" width="76" height="76" loading="lazy" decoding="async" />
               <p class="section-kicker">Acceso seguro</p>
               <h2>Inicia sesion</h2>
               <p class="hero-copy">Usa tus credenciales para entrar al panel segun tu rol.</p>
@@ -167,65 +211,14 @@
 
           <section id="dashboardPage" class="route-page hidden">
             <div class="dashboard-grid">
-              <div class="dashboard-analytics">
-                <article class="card dashboard-status-card">
-                  <div class="section-header">
-                    <div>
-                      <p class="section-kicker">Panel principal</p>
-                      <h3>Estado de vehiculos</h3>
-                    </div>
-                  </div>
-                  <div class="dashboard-status-list">
-                    <article class="dashboard-status-item">
-                      <div class="dashboard-status-head">
-                        <div class="dashboard-status-label">
-                          <span class="dashboard-status-dot available"></span>
-                          <strong>Disponibles</strong>
-                        </div>
-                        <span id="dashboardAvailableLabel">0</span>
-                      </div>
-                      <div class="dashboard-status-bar">
-                        <span id="dashboardAvailableBar" class="available"></span>
-                      </div>
-                    </article>
-
-                    <article class="dashboard-status-item">
-                      <div class="dashboard-status-head">
-                        <div class="dashboard-status-label">
-                          <span class="dashboard-status-dot service"></span>
-                          <strong>En servicio</strong>
-                        </div>
-                        <span id="dashboardServiceLabel">0</span>
-                      </div>
-                      <div class="dashboard-status-bar">
-                        <span id="dashboardServiceBar" class="service"></span>
-                      </div>
-                    </article>
-
-                    <article class="dashboard-status-item">
-                      <div class="dashboard-status-head">
-                        <div class="dashboard-status-label">
-                          <span class="dashboard-status-dot maintenance"></span>
-                          <strong>En mantenimiento</strong>
-                        </div>
-                        <span id="dashboardMaintenanceLabel">0</span>
-                      </div>
-                      <div class="dashboard-status-bar">
-                        <span id="dashboardMaintenanceBar" class="maintenance"></span>
-                      </div>
-                    </article>
-                  </div>
-                </article>
-              </div>
-
-              <article class="card">
+              <article class="card dashboard-vehicles-card">
                 <div class="section-header">
                   <div>
                     <p class="section-kicker">Vehiculos asignados</p>
                     <h3>Acceso rapido a unidades visibles</h3>
                   </div>
                 </div>
-                <div id="dashboardVehiclesList" class="private-vehicle-list"></div>
+                <div id="dashboardVehiclesList" class="dashboard-vehicle-grid"></div>
               </article>
             </div>
           </section>
@@ -275,7 +268,7 @@
                 <div class="section-header">
                   <div>
                     <p class="section-kicker">Crear usuario</p>
-                    <h3>Nuevo operador o admin</h3>
+                    <h3>Nuevo usuario del sistema</h3>
                   </div>
                 </div>
 
@@ -295,7 +288,8 @@
                   <label>
                     <span>Rol</span>
                     <select name="role">
-                      <option value="OPERADOR">OPERADOR</option>
+                      <option value="DIRECTOR">DIRECTOR</option>
+                      <option value="GERENTE">GERENTE</option>
                       <option value="ADMIN">ADMIN</option>
                     </select>
                   </label>
@@ -307,7 +301,7 @@
                 <div class="section-header">
                   <div>
                     <p class="section-kicker">Listado</p>
-                    <h3>Operadores registrados</h3>
+                    <h3>Usuarios registrados</h3>
                   </div>
                 </div>
                 <div id="operatorsList" class="list-stack"></div>
@@ -321,6 +315,93 @@
                   </div>
                   <div id="administratorsList" class="list-stack"></div>
                 </div>
+              </article>
+            </div>
+          </section>
+
+          <section id="financePage" class="route-page hidden">
+            <div class="section-header">
+              <div>
+                <p class="section-kicker">Gestion financiera</p>
+                <h3>Ingresos, egresos y costos operativos</h3>
+              </div>
+              <button id="refreshFinanceButton" class="button button-secondary" type="button">Actualizar</button>
+            </div>
+
+            <div id="financeSummary" class="summary-row"></div>
+
+            <div class="two-column-grid">
+              <article class="card">
+                <div class="section-header">
+                  <div>
+                    <p class="section-kicker">Nuevo registro</p>
+                    <h3>Movimiento financiero</h3>
+                  </div>
+                </div>
+
+                <form id="financeForm" class="form-grid">
+                  <label>
+                    <span>Tipo</span>
+                    <select name="type" required>
+                      <option value="INGRESO">Ingreso</option>
+                      <option value="EGRESO">Egreso</option>
+                      <option value="FLETE">Flete</option>
+                      <option value="COMPRA_VEHICULO">Compra de vehiculo</option>
+                      <option value="VENTA_VEHICULO">Venta de vehiculo</option>
+                      <option value="COSTO_OPERATIVO">Costo operativo</option>
+                      <option value="MANTENIMIENTO">Mantenimiento</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Valor</span>
+                    <input name="amount" type="number" min="0" step="0.01" required />
+                  </label>
+                  <label class="full-span">
+                    <span>Concepto</span>
+                    <input name="concept" maxlength="160" required />
+                  </label>
+                  <label>
+                    <span>Fecha</span>
+                    <input name="date" type="date" required />
+                  </label>
+                  <label>
+                    <span>Cliente</span>
+                    <input name="client" maxlength="160" />
+                  </label>
+                  <label>
+                    <span>Vehiculo asociado</span>
+                    <select name="vehicleId">
+                      <option value="">Sin vehiculo</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Costo por km</span>
+                    <input name="costPerKm" type="number" min="0" step="0.01" />
+                  </label>
+                  <label>
+                    <span>Promedio flete</span>
+                    <input name="averageFreight" type="number" min="0" step="0.01" />
+                  </label>
+                  <label class="full-span">
+                    <span>Costos asociados</span>
+                    <input name="associatedCosts" maxlength="2000" />
+                  </label>
+                  <label class="full-span">
+                    <span>Observaciones</span>
+                    <input name="observations" maxlength="2000" />
+                  </label>
+                  <button class="button button-primary full-span" type="submit">Guardar movimiento</button>
+                </form>
+              </article>
+
+              <article class="card">
+                <div class="section-header">
+                  <div>
+                    <p class="section-kicker">Historial financiero</p>
+                    <h3>Movimientos registrados</h3>
+                  </div>
+                </div>
+                <div id="financeList" class="list-stack"></div>
               </article>
             </div>
           </section>
@@ -431,7 +512,7 @@
       <article class="vehicle-card">
         <button class="vehicle-card-button" type="button">
           <div class="vehicle-image-wrap">
-            <img class="vehicle-image" alt="Vehiculo" />
+            <img class="vehicle-image" alt="Vehiculo" width="320" height="200" loading="lazy" decoding="async" />
             <span class="status-pill vehicle-status-badge"></span>
           </div>
           <div class="vehicle-body">
@@ -448,7 +529,7 @@
     <template id="privateVehicleItemTemplate">
       <article class="list-card">
         <div class="list-card-main">
-          <img class="list-card-thumb" alt="Vehiculo" />
+          <img class="list-card-thumb" alt="Vehiculo" width="64" height="52" loading="lazy" decoding="async" />
           <div>
             <strong class="list-card-title"></strong>
             <span class="list-card-subtitle"></span>
@@ -479,6 +560,6 @@
       </article>
     </template>
 
-    <script src="/app.js" defer></script>
+    <script src="/app.js?v=1.7" defer></script>
   </body>
   </html>

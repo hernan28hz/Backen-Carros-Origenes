@@ -18,7 +18,7 @@
   --state-info: #3b82f6;
   --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.05);
   --shadow-hover: 0 6px 20px rgba(0, 0, 0, 0.08);
-  --radius-card: 12px;
+  --radius-card: 8px;
   --radius-button: 8px;
   --radius-input: 8px;
   --radius-pill: 999px;
@@ -58,9 +58,9 @@ body.mobile-sidebar-open {
   overflow: hidden;
 }
 
-button,
 input,
-select {
+select,
+button {
   font: inherit;
 }
 
@@ -107,6 +107,14 @@ h3 {
 
 .public-topbar-minimal .app-topbar-left {
   align-items: center;
+}
+
+.public-route .app-topbar {
+  display: none;
+}
+
+.public-route .app-main {
+  margin-top: 0;
 }
 
 .card {
@@ -267,7 +275,8 @@ h3 {
 }
 
 .sidebar-toggle-brand {
-  width: 44px;
+  width: 52px;
+  height: 52px;
   padding: 0;
   display: grid;
   place-items: center;
@@ -277,11 +286,11 @@ h3 {
 }
 
 .toggle-logo-image {
-  width: 40px;
-  height: 40px;
-  object-fit: cover;
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
   display: block;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .nav-link-button:hover,
@@ -383,6 +392,91 @@ h3 {
   gap: var(--space-5);
 }
 
+.brand-hero {
+  position: relative;
+  min-height: 150px;
+  display: grid;
+  align-items: center;
+  overflow: hidden;
+  padding: clamp(14px, 2.4vw, 24px);
+  border: 1px solid rgba(231, 194, 126, 0.24);
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(90deg, rgba(21, 26, 31, 0.92), rgba(32, 38, 43, 0.72)),
+    url("/media/logobgicon-1280.webp") center / cover;
+  background:
+    linear-gradient(90deg, rgba(21, 26, 31, 0.92), rgba(32, 38, 43, 0.72)),
+    image-set(
+        url("/media/logobgicon-768.webp") 1x,
+        url("/media/logobgicon-1280.webp") 2x
+      )
+      center / cover;
+  box-shadow: var(--shadow-card);
+}
+
+.brand-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -6% -62% auto;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(231, 194, 126, 0.26), transparent 66%);
+  pointer-events: none;
+}
+
+.brand-hero-content {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2.4vw, 24px);
+}
+
+.brand-hero-logo {
+  width: clamp(82px, 12vw, 128px);
+  height: clamp(66px, 9vw, 96px);
+  object-fit: contain;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+}
+
+.brand-hero h1 {
+  margin-bottom: var(--space-1);
+  color: #fff7e8;
+  font-size: clamp(28px, 3.4vw, 44px);
+  line-height: 1;
+}
+
+.brand-hero .section-kicker,
+.brand-hero .hero-copy {
+  color: #e7c27e;
+}
+
+.brand-hero .hero-copy {
+  max-width: 520px;
+  margin-bottom: 0;
+  color: #e6dac8;
+  line-height: 1.35;
+}
+
+.section-logo,
+.auth-logo {
+  display: block;
+  object-fit: contain;
+}
+
+.section-logo {
+  width: 88px;
+  height: 70px;
+  margin-bottom: var(--space-4);
+}
+
+.auth-logo {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto var(--space-4);
+}
+
 .hero-grid,
 .two-column-grid,
 .workspace-grid {
@@ -405,13 +499,6 @@ h3 {
 .kpi-card,
 .card {
   padding: var(--space-5);
-}
-
-.section-block {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
 }
 
 .catalog-analytics {
@@ -459,6 +546,7 @@ h3 {
 }
 
 .catalog-mini-stat {
+  width: 100%;
   padding: var(--space-3);
   border: 1px solid rgba(15, 43, 70, 0.08);
   border-radius: 14px;
@@ -467,6 +555,27 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition);
+}
+
+.catalog-mini-stat:hover,
+.catalog-mini-stat:focus-visible {
+  background: #ffffff;
+  border-color: rgba(31, 122, 224, 0.2);
+  box-shadow: 0 8px 18px rgba(15, 43, 70, 0.08);
+  transform: translateY(-1px);
+}
+
+.catalog-mini-stat.active {
+  border-color: rgba(31, 122, 224, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(31, 122, 224, 0.12);
 }
 
 .catalog-mini-stat strong {
@@ -570,76 +679,6 @@ h3 {
 
 .catalog-status-bar span {
   display: block;
-  height: 100%;
-  border-radius: inherit;
-}
-
-.dashboard-analytics {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-5);
-}
-
-.dashboard-status-card {
-  padding: var(--space-5);
-}
-
-.dashboard-status-list {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.dashboard-status-item {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.dashboard-status-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.dashboard-status-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.dashboard-status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.dashboard-status-dot.available,
-.dashboard-status-bar span.available {
-  background: var(--state-success);
-}
-
-.dashboard-status-dot.maintenance,
-.dashboard-status-bar span.maintenance {
-  background: var(--state-error);
-}
-
-.dashboard-status-dot.service,
-.dashboard-status-bar span.service {
-  background: #f59e0b;
-}
-
-.dashboard-status-bar {
-  width: 100%;
-  height: 10px;
-  border-radius: 999px;
-  background: #eef2f7;
-  overflow: hidden;
-}
-
-.dashboard-status-bar span {
-  display: block;
-  width: 0;
   height: 100%;
   border-radius: inherit;
 }
@@ -784,8 +823,24 @@ h3 {
   justify-self: start;
 }
 
+.vehicle-card-simple .vehicle-body {
+  gap: var(--space-3);
+}
+
+.vehicle-card-simple .vehicle-model {
+  font-size: 15px;
+}
+
+.vehicle-card-simple .vehicle-caption {
+  font-weight: 600;
+}
+
 .auth-page {
   justify-content: center;
+}
+
+.login-route .auth-page {
+  padding-top: clamp(40px, 8vh, 92px);
 }
 
 .auth-card {
@@ -920,6 +975,7 @@ select {
   border-radius: 16px;
   background: transparent;
   color: #a7c0d8;
+  text-decoration: none;
   cursor: pointer;
   transition:
     background var(--transition),
@@ -1084,10 +1140,117 @@ select {
   padding: var(--space-6);
 }
 
+.catalog-route .app-content {
+  padding: 0;
+}
+
 .dashboard-grid,
 .kpi-grid {
   display: grid;
   gap: var(--space-5);
+}
+
+.dashboard-vehicles-card {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.dashboard-vehicle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-5);
+}
+
+.dashboard-vehicle-card {
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 10px 24px rgba(15, 43, 70, 0.06);
+  transition:
+    background var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition);
+}
+
+.dashboard-vehicle-card:hover {
+  background: var(--bg-card-hover);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
+}
+
+.dashboard-vehicle-image-wrap {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(31, 122, 224, 0.08), rgba(45, 181, 232, 0.1));
+}
+
+.dashboard-vehicle-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.dashboard-vehicle-body {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.dashboard-vehicle-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.dashboard-vehicle-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dashboard-vehicle-heading strong {
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.dashboard-vehicle-year,
+.dashboard-vehicle-copy small {
+  color: var(--text-secondary);
+}
+
+.dashboard-vehicle-status {
+  min-height: 22px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.dashboard-vehicle-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.dashboard-vehicle-copy span {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.dashboard-vehicle-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.dashboard-vehicle-actions .button {
+  width: 100%;
 }
 
 .kpi-grid {
@@ -1234,7 +1397,6 @@ select {
 }
 
 .detail-mode-summary .vehicle-admin-block,
-.detail-mode-summary .vehicle-status-block,
 .detail-mode-summary .vehicle-photo-upload-block,
 .detail-mode-summary .vehicle-status-history-block,
 .detail-mode-summary .vehicle-admin-history-block,
@@ -1249,6 +1411,31 @@ select {
 .vehicle-detail-head {
   display: grid;
   gap: var(--space-4);
+}
+
+.vehicle-status-inline {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 360px;
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: #f9fafb;
+}
+
+.vehicle-status-inline label {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.vehicle-status-inline label span {
+  margin-bottom: 0;
+}
+
+.vehicle-status-inline small {
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 .history-meta {
@@ -1395,10 +1582,6 @@ select {
     grid-template-columns: 1fr;
   }
 
-  .dashboard-analytics {
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr);
-    align-items: start;
-  }
 }
 
 @media (max-width: 768px) {
@@ -1432,6 +1615,38 @@ select {
   .app-topbar {
     min-height: auto;
     padding: 14px 16px;
+  }
+
+  .brand-hero {
+    min-height: 136px;
+    padding: 14px 16px;
+  }
+
+  .brand-hero-content {
+    display: flex;
+    gap: 12px;
+  }
+
+  .brand-hero-logo {
+    width: 72px;
+    height: 58px;
+    flex: 0 0 72px;
+  }
+
+  .brand-hero h1 {
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  .brand-hero .section-kicker {
+    margin-bottom: 3px;
+    font-size: 11px;
+  }
+
+  .brand-hero .hero-copy {
+    max-width: 100%;
+    font-size: 12px;
+    line-height: 1.3;
   }
 
   .sidebar {
@@ -1575,13 +1790,29 @@ select {
     width: min(300px, calc(100% - 24px));
   }
 
-  .dashboard-analytics {
-    grid-template-columns: minmax(0, 1fr) minmax(150px, 0.86fr);
-    gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .brand-hero {
+    min-height: 118px;
+    padding: 12px 14px;
   }
 
-  .dashboard-status-card {
-    grid-template-columns: 1fr;
-    align-items: start;
+  .brand-hero-content {
+    gap: 10px;
+  }
+
+  .brand-hero-logo {
+    width: 56px;
+    height: 46px;
+    flex-basis: 56px;
+  }
+
+  .brand-hero h1 {
+    font-size: 22px;
+  }
+
+  .brand-hero .hero-copy {
+    font-size: 11px;
   }
 }

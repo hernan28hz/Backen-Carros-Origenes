@@ -3,6 +3,7 @@ const path = require("node:path");
 const prisma = require("../../config/prisma");
 const ApiError = require("../../utils/apiError");
 const asyncHandler = require("../../utils/asyncHandler");
+const { createAuditLog } = require("../../services/auditLog");
 
 const uploadDir = path.join(process.cwd(), "uploads", "vehicles");
 
@@ -16,27 +17,38 @@ const uploadVehiclePhoto = asyncHandler(async (req, res) => {
 
   const vehicle = await prisma.vehicle.findUnique({
     where: { id },
-    select: { id: true, createdById: true },
+    select: { id: true },
   });
 
   if (!vehicle) {
     throw new ApiError(404, "Vehicle not found");
   }
 
-  if (req.user.role !== "ADMIN" && vehicle.createdById !== req.user.id) {
-    throw new ApiError(403, "You do not have access to upload photos for this vehicle");
-  }
+  const photo = await prisma.$transaction(async (tx) => {
+    const createdPhoto = await tx.vehiclePhoto.create({
+      data: {
+        vehicleId: id,
+        url: `/uploads/vehicles/${req.file.filename}`,
+        fileName: req.file.filename,
+        mimeType: req.file.mimetype,
+        size: req.file.size,
+        description,
+        uploadedById: req.user.id,
+      },
+    });
 
-  const photo = await prisma.vehiclePhoto.create({
-    data: {
-      vehicleId: id,
-      url: `/uploads/vehicles/${req.file.filename}`,
-      fileName: req.file.filename,
-      mimeType: req.file.mimetype,
-      size: req.file.size,
-      description,
-      uploadedById: req.user.id,
-    },
+    await createAuditLog(
+      {
+        userId: req.user.id,
+        action: "CREATE",
+        entity: "VehiclePhoto",
+        entityId: createdPhoto.id,
+        newValue: createdPhoto,
+      },
+      tx
+    );
+
+    return createdPhoto;
   });
 
   return res.status(201).json(photo);
@@ -58,15 +70,21 @@ const deleteVehiclePhoto = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Photo not found");
   }
 
-  const canDelete =
-    req.user.role === "ADMIN" || photo.uploadedById === req.user.id || photo.vehicle.createdById === req.user.id;
+  await prisma.$transaction(async (tx) => {
+    await tx.vehiclePhoto.delete({
+      where: { id: photo.id },
+    });
 
-  if (!canDelete) {
-    throw new ApiError(403, "You do not have access to delete this photo");
-  }
-
-  await prisma.vehiclePhoto.delete({
-    where: { id: photo.id },
+    await createAuditLog(
+      {
+        userId: req.user.id,
+        action: "DELETE",
+        entity: "VehiclePhoto",
+        entityId: photo.id,
+        oldValue: photo,
+      },
+      tx
+    );
   });
 
   const filePath = path.join(uploadDir, photo.fileName);
