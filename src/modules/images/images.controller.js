@@ -12,6 +12,12 @@ const uploadDir = path.resolve(process.cwd(), "uploads", "vehicles");
 const cacheDir = path.resolve(process.cwd(), "uploads", ".cache", "vehicles");
 const allowedWidths = [160, 320, 480, 640, 768, 960, 1280];
 
+function sendOriginalImage(res, fileName, filePath) {
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.type(path.extname(fileName) || "jpeg");
+  return res.sendFile(filePath);
+}
+
 function pickWidth(value) {
   const requested = Number.parseInt(value, 10);
   if (!Number.isFinite(requested)) return 640;
@@ -63,6 +69,10 @@ const serveVehicleImageVariant = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Image not found");
   }
 
+  if (process.env.IMAGE_OPTIMIZATION_ENABLED === "false") {
+    return sendOriginalImage(res, fileName, filePath);
+  }
+
   const width = pickWidth(req.query.w);
   const format = pickFormat(req.headers.accept);
   const parsedName = path.parse(fileName);
@@ -73,13 +83,20 @@ const serveVehicleImageVariant = asyncHandler(async (req, res) => {
     .slice(0, 12);
   const cachePath = path.join(cacheDir, `${parsedName.name}-${width}-${cacheHash}.${format}`);
 
-  await fs.mkdir(cacheDir, { recursive: true });
-  if (!(await fileExists(cachePath))) {
-    await sharp(filePath)
-      .rotate()
-      .resize({ width, withoutEnlargement: true })
-      .toFormat(format, formatOptions(format))
-      .toFile(cachePath);
+  try {
+    await fs.mkdir(cacheDir, { recursive: true });
+    if (!(await fileExists(cachePath))) {
+      await sharp(filePath)
+        .rotate()
+        .resize({ width, withoutEnlargement: true })
+        .toFormat(format, formatOptions(format))
+        .toFile(cachePath);
+    }
+  } catch (error) {
+    // If image processing fails in production, keep the catalog usable.
+    // eslint-disable-next-line no-console
+    console.warn(`Serving original image because optimization failed for ${fileName}:`, error);
+    return sendOriginalImage(res, fileName, filePath);
   }
 
   res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
