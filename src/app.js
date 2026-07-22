@@ -4,7 +4,8 @@ const compression = require("compression");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
-require("./config/env");
+const env = require("./config/env");
+const prisma = require("./config/prisma");
 const errorMiddleware = require("./middlewares/error.middleware");
 
 const authRoutes = require("./modules/auth/auth.routes");
@@ -33,9 +34,11 @@ const setNoCacheHeaders = (res) => {
 
 app.use(helmet());
 app.use(cors());
-app.use(morgan("dev"));
+if (env.nodeEnv !== "production" || process.env.HTTP_LOGS === "true") {
+  app.use(morgan(env.nodeEnv === "production" ? "tiny" : "dev"));
+}
 app.use(compression());
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "1mb" }));
 
 app.use(
   express.static(publicStaticPath, {
@@ -66,8 +69,20 @@ app.use((_, res, next) => {
   next();
 });
 
-app.get("/health", (_req, res) => {
-  res.status(200).json({ status: "ok" });
+app.get("/health", async (req, res) => {
+  if (req.query.database !== "1") {
+    res.status(200).json({ status: "ok" });
+    return;
+  }
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ status: "ok", database: "ok" });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("Database health check failed:", error);
+    res.status(503).json({ status: "ok", database: "error" });
+  }
 });
 
 app.use("/catalog", catalogRoutes);

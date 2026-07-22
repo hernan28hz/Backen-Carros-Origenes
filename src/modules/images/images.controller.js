@@ -5,6 +5,9 @@ const sharp = require("sharp");
 const ApiError = require("../../utils/apiError");
 const asyncHandler = require("../../utils/asyncHandler");
 
+sharp.cache({ files: 20, memory: 32, items: 100 });
+sharp.concurrency(Number(process.env.IMAGE_PROCESSING_CONCURRENCY || 1));
+
 const uploadDir = path.resolve(process.cwd(), "uploads", "vehicles");
 const cacheDir = path.resolve(process.cwd(), "uploads", ".cache", "vehicles");
 const allowedWidths = [160, 320, 480, 640, 768, 960, 1280];
@@ -20,7 +23,7 @@ function pickWidth(value) {
 function pickFormat(acceptHeader) {
   const accepts = String(acceptHeader || "");
   if (accepts.includes("image/webp")) return "webp";
-  if (accepts.includes("image/avif")) return "avif";
+  if (process.env.IMAGE_AVIF_ENABLED === "true" && accepts.includes("image/avif")) return "avif";
   return "jpeg";
 }
 
@@ -82,9 +85,7 @@ const serveVehicleImageVariant = asyncHandler(async (req, res) => {
   res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
   res.setHeader("Vary", "Accept");
   res.type(`image/${format}`);
-  const image = await fs.readFile(cachePath);
-  res.setHeader("Content-Length", image.length);
-  return res.send(image);
+  return res.sendFile(cachePath);
 });
 
 module.exports = {

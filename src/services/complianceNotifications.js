@@ -38,23 +38,35 @@ const ALERTS_BY_DAY_DIFFERENCE = {
 };
 
 function startComplianceNotificationScheduler() {
-  setTimeout(() => {
-    runComplianceNotificationCheck().catch((error) => {
-      // eslint-disable-next-line no-console
-      console.error("Error checking compliance notifications:", error.message);
-    });
-  }, 15000);
+  if (process.env.COMPLIANCE_NOTIFICATIONS_ENABLED === "false") {
+    return null;
+  }
+
+  if (process.env.COMPLIANCE_RUN_ON_STARTUP === "true") {
+    const startupDelayMs = Number(process.env.COMPLIANCE_STARTUP_DELAY_MS || 5 * 60 * 1000);
+    setTimeout(runScheduledComplianceCheck, startupDelayMs);
+  }
 
   return setInterval(() => {
-    runComplianceNotificationCheck().catch((error) => {
-      // eslint-disable-next-line no-console
-      console.error("Error checking compliance notifications:", error.message);
-    });
+    runScheduledComplianceCheck();
   }, 24 * 60 * 60 * 1000);
+}
+
+function runScheduledComplianceCheck() {
+  runComplianceNotificationCheck().catch((error) => {
+    // eslint-disable-next-line no-console
+    console.error("Error checking compliance notifications:", error.message);
+  });
 }
 
 function getUtcDayStart(date = new Date()) {
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function getUtcDayRange(dayDifference, today = new Date()) {
+  const start = new Date(getUtcDayStart(today) + dayDifference * 86400000);
+  const end = new Date(start.getTime() + 86400000);
+  return { start, end };
 }
 
 function getDayDifference(expiryDate, today = new Date()) {
@@ -67,87 +79,147 @@ function getVehicleLabel(vehicle) {
   return `${vehicle.brand} ${vehicle.model} (${vehicle.plate})`;
 }
 
+function buildExpiryWhere(today = new Date()) {
+  const targetRanges = Object.keys(ALERTS_BY_DAY_DIFFERENCE).map((dayDifference) =>
+    getUtcDayRange(Number(dayDifference), today)
+  );
+
+  return DOCUMENTS.flatMap((documentInfo) =>
+    targetRanges.map((range) => ({
+      [documentInfo.field]: {
+        gte: range.start,
+        lt: range.end,
+      },
+    }))
+  );
+}
+
+function getNotificationKey(notification) {
+  return [
+    notification.vehicleId,
+    notification.userId,
+    notification.documentType,
+    notification.alertType,
+    notification.expiryDate.toISOString(),
+  ].join("|");
+}
+
 async function runComplianceNotificationCheck() {
+  const today = new Date();
   const vehicles = await prisma.vehicle.findMany({
     where: {
-      OR: [
-        { soatExpiry: { not: null } },
-        { tecnomecanicaExpiry: { not: null } },
-        { vehicleTaxExpiry: { not: null } },
-      ],
+      OR: buildExpiryWhere(today),
       createdBy: {
         contactEmail: { not: null },
         contactEmailVerified: true,
       },
     },
-    include: {
+    select: {
+      id: true,
+      plate: true,
+      brand: true,
+      model: true,
+      soatExpiry: true,
+      tecnomecanicaExpiry: true,
+      vehicleTaxExpiry: true,
       createdBy: {
         select: {
           id: true,
-          name: true,
           contactEmail: true,
-          contactEmailVerified: true,
         },
       },
       photos: {
         orderBy: { createdAt: "desc" },
         take: 1,
+        select: {
+          url: true,
+        },
       },
     },
   });
 
-  let sentCount = 0;
+  const candidates = [];
 
   for (const vehicle of vehicles) {
     for (const documentInfo of DOCUMENTS) {
       const expiryDate = vehicle[documentInfo.field];
       if (!expiryDate) continue;
 
-      const dayDifference = getDayDifference(expiryDate);
+      const dayDifference = getDayDifference(expiryDate, today);
       const alertConfig = ALERTS_BY_DAY_DIFFERENCE[String(dayDifference)];
       if (!alertConfig) continue;
 
-      const alreadySent = await prisma.vehicleComplianceNotification.findUnique({
-        where: {
-          vehicleId_userId_documentType_alertType_expiryDate: {
-            vehicleId: vehicle.id,
-            userId: vehicle.createdBy.id,
-            documentType: documentInfo.documentType,
-            alertType: alertConfig.alertType,
-            expiryDate,
-          },
-        },
-        select: { id: true },
+      candidates.push({
+        vehicle,
+        documentInfo,
+        alertConfig,
+        vehicleId: vehicle.id,
+        userId: vehicle.createdBy.id,
+        documentType: documentInfo.documentType,
+        alertType: alertConfig.alertType,
+        expiryDate,
+      });
+    }
+  }
+
+  if (!candidates.length) {
+    return { sentCount: 0 };
+  }
+
+  const existingNotifications = await prisma.vehicleComplianceNotification.findMany({
+    where: {
+      OR: candidates.map((candidate) => ({
+        vehicleId: candidate.vehicleId,
+        userId: candidate.userId,
+        documentType: candidate.documentType,
+        alertType: candidate.alertType,
+        expiryDate: candidate.expiryDate,
+      })),
+    },
+    select: {
+      vehicleId: true,
+      userId: true,
+      documentType: true,
+      alertType: true,
+      expiryDate: true,
+    },
+  });
+  const existingNotificationKeys = new Set(existingNotifications.map(getNotificationKey));
+  let sentCount = 0;
+
+  for (const candidate of candidates) {
+    if (existingNotificationKeys.has(getNotificationKey(candidate))) {
+      continue;
+    }
+
+    const { vehicle, documentInfo, alertConfig, expiryDate } = candidate;
+
+    try {
+      await sendComplianceAlert(vehicle.createdBy.contactEmail, {
+        plate: vehicle.plate,
+        vehicleLabel: getVehicleLabel(vehicle),
+        documentLabel: documentInfo.label,
+        expiryDate,
+        status: alertConfig.status,
+        title: `El ${documentInfo.label} de tu vehiculo ${alertConfig.titlePrefix}`,
+        photoUrl: vehicle.photos[0]?.url || null,
       });
 
-      if (alreadySent) continue;
-
-      try {
-        await sendComplianceAlert(vehicle.createdBy.contactEmail, {
-          plate: vehicle.plate,
-          vehicleLabel: getVehicleLabel(vehicle),
-          documentLabel: documentInfo.label,
+      await prisma.vehicleComplianceNotification.create({
+        data: {
+          vehicleId: vehicle.id,
+          userId: vehicle.createdBy.id,
+          documentType: documentInfo.documentType,
+          alertType: alertConfig.alertType,
           expiryDate,
-          status: alertConfig.status,
-          title: `El ${documentInfo.label} de tu vehiculo ${alertConfig.titlePrefix}`,
-          photoUrl: vehicle.photos[0]?.url || null,
-        });
+        },
+      });
+      existingNotificationKeys.add(getNotificationKey(candidate));
 
-        await prisma.vehicleComplianceNotification.create({
-          data: {
-            vehicleId: vehicle.id,
-            userId: vehicle.createdBy.id,
-            documentType: documentInfo.documentType,
-            alertType: alertConfig.alertType,
-            expiryDate,
-          },
-        });
-
-        sentCount += 1;
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(`No se pudo enviar alerta ${documentInfo.documentType} para ${vehicle.plate}:`, error.message);
-      }
+      sentCount += 1;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(`No se pudo enviar alerta ${documentInfo.documentType} para ${vehicle.plate}:`, error.message);
     }
   }
 

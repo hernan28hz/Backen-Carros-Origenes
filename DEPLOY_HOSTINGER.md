@@ -21,16 +21,35 @@ Variables necesarias:
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 
-Ejemplo:
+Ejemplo si la app Node y MySQL estan en el mismo hosting de Hostinger:
 ```env
-DATABASE_URL="mysql://usuario:clave@srv1665.hstgr.io:3306/u122249446_bdCarros17"
+DATABASE_URL="mysql://usuario:clave@localhost:3306/u122249446_bdCarros17"
 PORT=3000
 NODE_ENV=production
 APP_NAME="Grupo w logist"
 APP_URL=https://grupowlogist.com/
 JWT_SECRET=tu_clave_secreta
 JWT_EXPIRES_IN=8h
+DATABASE_CONNECTION_LIMIT=3
+DATABASE_POOL_TIMEOUT=10
+COMPLIANCE_RUN_ON_STARTUP=false
+HTTP_LOGS=false
 ```
+
+Usa el host tipo `srv1665.hstgr.io` solo para conectarte desde fuera de Hostinger, por ejemplo desde tu PC o una herramienta remota con Remote MySQL habilitado.
+
+## Ajustes para bajar consumo en Hostinger
+
+La app ya limita el pool de MySQL a 3 conexiones si `DATABASE_URL` no trae `connection_limit`. En hosting compartido esto ayuda a evitar picos de conexiones y CPU.
+
+Variables utiles:
+
+- `DATABASE_CONNECTION_LIMIT=3`: mantiene pocas conexiones abiertas a MySQL.
+- `DATABASE_POOL_TIMEOUT=10`: corta esperas largas cuando MySQL esta saturado.
+- `COMPLIANCE_RUN_ON_STARTUP=false`: evita que cada reinicio escanee vencimientos inmediatamente.
+- `COMPLIANCE_NOTIFICATIONS_ENABLED=false`: desactiva totalmente el chequeo diario de vencimientos si Hostinger sigue reclamando consumo.
+- `HTTP_LOGS=false`: deja apagado el log por cada request en produccion.
+- `IMAGE_PROCESSING_CONCURRENCY=1`: mantiene Sharp procesando una imagen a la vez.
 
 ## Subir el proyecto
 
@@ -81,7 +100,7 @@ Luego crea las tablas. Tienes dos opciones:
 ### Opcion A: recomendada si quieres respetar migraciones
 
 ```bash
-npx prisma migrate deploy
+npm run prisma:deploy
 ```
 
 ### Opcion B: util si solo quieres empujar el esquema actual
@@ -117,8 +136,22 @@ Prueba:
 Debe devolver algo como:
 
 ```json
+{ "status": "ok" }
+```
+
+Para probar tambien MySQL, usa:
+
+```text
+/health?database=1
+```
+
+Debe devolver:
+
+```json
 { "status": "ok", "database": "ok" }
 ```
+
+Si responde `database: "error"`, la app esta viva pero MySQL no esta disponible para Prisma. Revisa `DATABASE_URL`, reinicia la app y vuelve a ejecutar migraciones/seed.
 
 ## 9. Cuidado con las fotos subidas
 
@@ -143,7 +176,7 @@ Para una version inicial puede servir asi. Para algo mas robusto, despues convie
 4. Subir proyecto sin `.env` ni `node_modules`
 5. Ejecutar `npm install`
 6. Ejecutar `npx prisma generate`
-7. Ejecutar `npx prisma migrate deploy`
+7. Ejecutar `npm run prisma:deploy`
 8. Ejecutar `npm run seed:admin`
 9. Iniciar con `npm start`
 10. Probar `/health`

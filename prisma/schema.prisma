@@ -94,6 +94,7 @@ model FinanceRecord {
 
   @@index([type])
   @@index([date])
+  @@index([type, date])
   @@index([vehicleId])
   @@index([createdById])
 }
@@ -141,6 +142,9 @@ model Vehicle {
   @@index([plate])
   @@index([createdById])
   @@index([currentStatus])
+  @@index([soatExpiry])
+  @@index([tecnomecanicaExpiry])
+  @@index([vehicleTaxExpiry])
 }
 
 model VehicleComplianceNotification {
@@ -172,6 +176,7 @@ model VehicleStatusHistory {
   updatedBy   User              @relation("StatusUpdater", fields: [updatedById], references: [id])
 
   @@index([vehicleId])
+  @@index([vehicleId, createdAt])
   @@index([updatedById])
   @@index([statusType])
 }
@@ -190,6 +195,7 @@ model VehiclePhoto {
   uploadedBy  User     @relation("PhotoUploader", fields: [uploadedById], references: [id])
 
   @@index([vehicleId])
+  @@index([vehicleId, createdAt])
   @@index([uploadedById])
 }
 
@@ -205,6 +211,7 @@ model VehicleAdminHistory {
   updatedBy   User     @relation("VehicleAdminUpdater", fields: [updatedById], references: [id])
 
   @@index([vehicleId])
+  @@index([vehicleId, createdAt])
   @@index([updatedById])
   @@index([createdAt])
 }

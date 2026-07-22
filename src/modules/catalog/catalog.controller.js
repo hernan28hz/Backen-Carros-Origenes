@@ -22,6 +22,12 @@ const listPublicVehicles = asyncHandler(async (_req, res) => {
     },
   });
 
+  res.removeHeader("Pragma");
+  res.removeHeader("Expires");
+  res.removeHeader("Surrogate-Control");
+  res.removeHeader("CDN-Cache-Control");
+  res.removeHeader("Vercel-CDN-Cache-Control");
+  res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
   return res.json(
     vehicles.map((vehicle) => ({
       id: vehicle.id,

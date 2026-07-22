@@ -635,7 +635,7 @@ async function loadPublicCatalog(options = {}) {
   renderCurrentRoute();
 
   try {
-    state.catalogVehicles = await apiFetch("/catalog/vehicles", { auth: false });
+    state.catalogVehicles = await apiFetch("/catalog/vehicles", { auth: false, fresh: force });
     state.publicCatalogLoaded = true;
     state.publicCatalogLoadedAt = Date.now();
     renderCurrentRoute();
@@ -1410,7 +1410,7 @@ async function handleDeleteVehicle(vehicleId) {
     await apiFetch(`/vehicles/${vehicleId}`, { method: "DELETE" });
     addSystemMessage("success", "Vehiculo eliminado", `${label} fue eliminado del inventario.`);
     pushToast("success", "Vehiculo eliminado correctamente.");
-    await Promise.all([loadPublicCatalog(), loadPrivateVehicles()]);
+    await Promise.all([loadPublicCatalog({ force: true }), loadPrivateVehicles()]);
     renderCurrentRoute();
   } catch (error) {
     pushToast("error", error.message);
@@ -1764,7 +1764,7 @@ function attachVehicleDetailHandlers(container, vehicle, options = {}) {
         });
 
         addSystemMessage("success", "Datos actualizados", `Se actualizaron los datos de ${vehicle.plate}.`);
-        await Promise.all([loadPublicCatalog(), loadPrivateVehicles()]);
+        await Promise.all([loadPublicCatalog({ force: true }), loadPrivateVehicles()]);
         if (options.panelMode) {
           await renderVehicleDetailIntoContainer(vehicle.id, container, {
             panelMode: true,
@@ -1797,7 +1797,7 @@ function attachVehicleDetailHandlers(container, vehicle, options = {}) {
 
           addSystemMessage("success", "Estado actualizado", `Se actualizo el estado de ${vehicle.plate}.`);
           pushToast("success", "Estado actualizado automaticamente.");
-          await Promise.all([loadPublicCatalog(), loadPrivateVehicles()]);
+          await Promise.all([loadPublicCatalog({ force: true }), loadPrivateVehicles()]);
           if (options.panelMode) {
             await renderVehicleDetailIntoContainer(vehicle.id, container, {
               panelMode: true,
@@ -1833,7 +1833,7 @@ function attachVehicleDetailHandlers(container, vehicle, options = {}) {
         });
 
         addSystemMessage("success", "Foto cargada", `La galeria de ${vehicle.plate} fue actualizada.`);
-        await Promise.all([loadPublicCatalog(), loadPrivateVehicles()]);
+        await Promise.all([loadPublicCatalog({ force: true }), loadPrivateVehicles()]);
         if (options.panelMode) {
           await renderVehicleDetailIntoContainer(vehicle.id, container, {
             panelMode: true,
@@ -1866,7 +1866,7 @@ function attachVehicleDetailHandlers(container, vehicle, options = {}) {
 
         addSystemMessage("success", "Foto eliminada", `Se elimino una imagen de ${vehicle.plate}.`);
         pushToast("success", "Foto eliminada correctamente.");
-        await Promise.all([loadPublicCatalog(), loadPrivateVehicles()]);
+        await Promise.all([loadPublicCatalog({ force: true }), loadPrivateVehicles()]);
         if (options.panelMode) {
           await renderVehicleDetailIntoContainer(vehicle.id, container, {
             panelMode: true,
@@ -2065,7 +2065,7 @@ async function handleCreateVehicle(event) {
         ? "Vehiculo e imagen guardados correctamente."
         : "Vehiculo creado correctamente."
     );
-    await Promise.all([loadPublicCatalog(), loadPrivateVehicles()]);
+    await Promise.all([loadPublicCatalog({ force: true }), loadPrivateVehicles()]);
     if (state.user.role === "ADMIN") {
       navigate("/dashboard");
     }
@@ -2427,6 +2427,7 @@ async function apiFetch(path, options = {}) {
     body,
     auth = true,
     isMultipart = false,
+    fresh = true,
   } = options;
 
   const headers = {};
@@ -2437,12 +2438,12 @@ async function apiFetch(path, options = {}) {
     headers.Authorization = `Bearer ${state.token}`;
   }
 
-  const requestUrl = method === "GET" ? appendFreshQuery(path) : path;
+  const requestUrl = method === "GET" && fresh ? appendFreshQuery(path) : path;
   const response = await fetch(requestUrl, {
     method,
     headers,
     body,
-    cache: "no-store",
+    cache: method === "GET" && !fresh ? "default" : "no-store",
     credentials: "same-origin",
   });
   const data = await parseResponse(response);

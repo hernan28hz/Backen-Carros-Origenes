@@ -77,16 +77,16 @@ const listFinanceRecords = asyncHandler(async (_req, res) => {
 });
 
 const getFinanceSummary = asyncHandler(async (_req, res) => {
-  const records = await prisma.financeRecord.findMany({
-    select: {
-      type: true,
+  const records = await prisma.financeRecord.groupBy({
+    by: ["type"],
+    _sum: {
       amount: true,
     },
   });
 
   const summary = records.reduce(
     (accumulator, record) => {
-      const amount = Number(record.amount);
+      const amount = Number(record._sum.amount || 0);
       accumulator.byType[record.type] = (accumulator.byType[record.type] || 0) + amount;
       if (["INGRESO", "FLETE", "VENTA_VEHICULO"].includes(record.type)) {
         accumulator.income += amount;
