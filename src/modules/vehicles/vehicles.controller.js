@@ -13,6 +13,62 @@ const ADMIN_DETAIL_FIELDS = {
   fines: "Multas",
 };
 
+const VEHICLE_DETAIL_HISTORY_LIMIT = Number(process.env.VEHICLE_DETAIL_HISTORY_LIMIT || 25);
+const VEHICLE_DETAIL_PHOTO_LIMIT = Number(process.env.VEHICLE_DETAIL_PHOTO_LIMIT || 12);
+
+const vehicleListSelect = {
+  id: true,
+  plate: true,
+  brand: true,
+  model: true,
+  year: true,
+  currentStatus: true,
+  assignedOperator: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: {
+    select: { id: true, name: true, email: true, role: true },
+  },
+  statusHistory: {
+    orderBy: { createdAt: "desc" },
+    take: 1,
+    select: {
+      id: true,
+      statusType: true,
+      description: true,
+      date: true,
+      createdAt: true,
+      updatedById: true,
+    },
+  },
+  _count: {
+    select: { photos: true },
+  },
+};
+
+const vehicleDetailInclude = {
+  createdBy: {
+    select: { id: true, name: true, email: true, role: true },
+  },
+  statusHistory: {
+    orderBy: { createdAt: "desc" },
+    take: VEHICLE_DETAIL_HISTORY_LIMIT,
+  },
+  adminHistory: {
+    orderBy: { createdAt: "desc" },
+    take: VEHICLE_DETAIL_HISTORY_LIMIT,
+    include: {
+      updatedBy: {
+        select: { id: true, name: true, role: true },
+      },
+    },
+  },
+  photos: {
+    orderBy: { createdAt: "desc" },
+    take: VEHICLE_DETAIL_PHOTO_LIMIT,
+  },
+};
+
 function hasOwnProperty(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
 }
@@ -97,18 +153,7 @@ const createVehicle = asyncHandler(async (req, res) => {
 const listVehicles = asyncHandler(async (req, res) => {
   const vehicles = await prisma.vehicle.findMany({
     orderBy: { createdAt: "desc" },
-    include: {
-      createdBy: {
-        select: { id: true, name: true, email: true, role: true },
-      },
-      statusHistory: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-      _count: {
-        select: { photos: true },
-      },
-    },
+    select: vehicleListSelect,
   });
 
   return res.json(vehicles);
@@ -117,25 +162,7 @@ const listVehicles = asyncHandler(async (req, res) => {
 const getVehicleById = asyncHandler(async (req, res) => {
   const vehicle = await prisma.vehicle.findUnique({
     where: { id: req.params.id },
-    include: {
-      createdBy: {
-        select: { id: true, name: true, email: true, role: true },
-      },
-      statusHistory: {
-        orderBy: { createdAt: "desc" },
-      },
-      adminHistory: {
-        orderBy: { createdAt: "desc" },
-        include: {
-          updatedBy: {
-            select: { id: true, name: true, role: true },
-          },
-        },
-      },
-      photos: {
-        orderBy: { createdAt: "desc" },
-      },
-    },
+    include: vehicleDetailInclude,
   });
 
   if (!vehicle) {
@@ -242,25 +269,7 @@ const updateVehicleDetails = asyncHandler(async (req, res) => {
 
     return tx.vehicle.findUnique({
       where: { id },
-      include: {
-        createdBy: {
-          select: { id: true, name: true, email: true, role: true },
-        },
-        statusHistory: {
-          orderBy: { createdAt: "desc" },
-        },
-        adminHistory: {
-          orderBy: { createdAt: "desc" },
-          include: {
-            updatedBy: {
-              select: { id: true, name: true, role: true },
-            },
-          },
-        },
-        photos: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
+      include: vehicleDetailInclude,
     });
   });
 

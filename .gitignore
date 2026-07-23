@@ -6,20 +6,35 @@ node_modules/
 .env.*
 !.env.example
 
-# Archivos locales del editor
+# Archivos locales
 .vscode/
+.idea/
+.agents/
+.codex/
 
 # Logs
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Archivos subidos en runtime
-uploads/*
+# Archivos generados en runtime
+uploads/**
 !uploads/.gitkeep
+!uploads/**/
+!uploads/**/.gitkeep
 
 # Prisma local
 prisma/dev.db
 prisma/dev.db-journal
+
+# Builds y cache local
+dist/
+build/
+coverage/
+.cache/
+.npm/
 
 # Sistema operativo
 .DS_Store

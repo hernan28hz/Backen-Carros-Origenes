@@ -5,12 +5,17 @@ const sharp = require("sharp");
 const ApiError = require("../../utils/apiError");
 const asyncHandler = require("../../utils/asyncHandler");
 
-sharp.cache({ files: 20, memory: 32, items: 100 });
+sharp.cache({
+  files: Number(process.env.IMAGE_CACHE_FILES || 10),
+  memory: Number(process.env.IMAGE_CACHE_MEMORY_MB || 16),
+  items: Number(process.env.IMAGE_CACHE_ITEMS || 50),
+});
 sharp.concurrency(Number(process.env.IMAGE_PROCESSING_CONCURRENCY || 1));
 
 const uploadDir = path.resolve(process.cwd(), "uploads", "vehicles");
 const cacheDir = path.resolve(process.cwd(), "uploads", ".cache", "vehicles");
 const allowedWidths = [160, 320, 480, 640, 768, 960, 1280];
+const variantJobs = new Map();
 
 function sendOriginalImage(res, fileName, filePath) {
   res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
@@ -86,11 +91,21 @@ const serveVehicleImageVariant = asyncHandler(async (req, res) => {
   try {
     await fs.mkdir(cacheDir, { recursive: true });
     if (!(await fileExists(cachePath))) {
-      await sharp(filePath)
-        .rotate()
-        .resize({ width, withoutEnlargement: true })
-        .toFormat(format, formatOptions(format))
-        .toFile(cachePath);
+      const existingJob = variantJobs.get(cachePath);
+      if (existingJob) {
+        await existingJob;
+      } else {
+        const job = sharp(filePath)
+          .rotate()
+          .resize({ width, withoutEnlargement: true })
+          .toFormat(format, formatOptions(format))
+          .toFile(cachePath)
+          .finally(() => {
+            variantJobs.delete(cachePath);
+          });
+        variantJobs.set(cachePath, job);
+        await job;
+      }
     }
   } catch (error) {
     // If image processing fails in production, keep the catalog usable.

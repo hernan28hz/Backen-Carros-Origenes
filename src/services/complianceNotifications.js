@@ -38,18 +38,24 @@ const ALERTS_BY_DAY_DIFFERENCE = {
 };
 
 function startComplianceNotificationScheduler() {
-  if (process.env.COMPLIANCE_NOTIFICATIONS_ENABLED === "false") {
+  const enabledValue = process.env.COMPLIANCE_NOTIFICATIONS_ENABLED;
+  const enabled = enabledValue !== "false";
+
+  if (!enabled) {
     return null;
   }
 
   if (process.env.COMPLIANCE_RUN_ON_STARTUP === "true") {
     const startupDelayMs = Number(process.env.COMPLIANCE_STARTUP_DELAY_MS || 5 * 60 * 1000);
-    setTimeout(runScheduledComplianceCheck, startupDelayMs);
+    const startupTimer = setTimeout(runScheduledComplianceCheck, startupDelayMs);
+    startupTimer.unref?.();
   }
 
-  return setInterval(() => {
+  const interval = setInterval(() => {
     runScheduledComplianceCheck();
   }, 24 * 60 * 60 * 1000);
+  interval.unref?.();
+  return interval;
 }
 
 function runScheduledComplianceCheck() {

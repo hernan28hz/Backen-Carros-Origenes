@@ -2427,7 +2427,7 @@ async function apiFetch(path, options = {}) {
     body,
     auth = true,
     isMultipart = false,
-    fresh = true,
+    fresh = false,
   } = options;
 
   const headers = {};

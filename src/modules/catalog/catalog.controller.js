@@ -1,6 +1,10 @@
 const prisma = require("../../config/prisma");
 const asyncHandler = require("../../utils/asyncHandler");
 
+const THREE_DAYS_IN_SECONDS = 3 * 24 * 60 * 60;
+const PUBLIC_CATALOG_CACHE_SECONDS = Number(process.env.PUBLIC_CATALOG_CACHE_SECONDS || THREE_DAYS_IN_SECONDS);
+const PUBLIC_CATALOG_STALE_SECONDS = Number(process.env.PUBLIC_CATALOG_STALE_SECONDS || THREE_DAYS_IN_SECONDS);
+
 const listPublicVehicles = asyncHandler(async (_req, res) => {
   const vehicles = await prisma.vehicle.findMany({
     orderBy: { createdAt: "desc" },
@@ -27,7 +31,10 @@ const listPublicVehicles = asyncHandler(async (_req, res) => {
   res.removeHeader("Surrogate-Control");
   res.removeHeader("CDN-Cache-Control");
   res.removeHeader("Vercel-CDN-Cache-Control");
-  res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
+  res.setHeader(
+    "Cache-Control",
+    `public, max-age=${PUBLIC_CATALOG_CACHE_SECONDS}, stale-while-revalidate=${PUBLIC_CATALOG_STALE_SECONDS}`
+  );
   return res.json(
     vehicles.map((vehicle) => ({
       id: vehicle.id,

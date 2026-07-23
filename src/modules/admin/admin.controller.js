@@ -4,6 +4,36 @@ const ApiError = require("../../utils/apiError");
 const { isPrimaryAdmin } = require("../../utils/adminAccess");
 const { ROLES } = require("../../utils/permissions");
 
+const vehicleListSelect = {
+  id: true,
+  plate: true,
+  brand: true,
+  model: true,
+  year: true,
+  currentStatus: true,
+  assignedOperator: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: {
+    select: { id: true, name: true, email: true, role: true },
+  },
+  statusHistory: {
+    orderBy: { createdAt: "desc" },
+    take: 1,
+    select: {
+      id: true,
+      statusType: true,
+      description: true,
+      date: true,
+      createdAt: true,
+      updatedById: true,
+    },
+  },
+  _count: {
+    select: { photos: true },
+  },
+};
+
 const getVehiclesGlobalStatus = asyncHandler(async (_req, res) => {
   const [statusCount, vehicles] = await Promise.all([
     prisma.vehicle.groupBy({
@@ -14,18 +44,7 @@ const getVehiclesGlobalStatus = asyncHandler(async (_req, res) => {
     }),
     prisma.vehicle.findMany({
       orderBy: { createdAt: "desc" },
-      include: {
-        createdBy: {
-          select: { id: true, name: true, email: true, role: true },
-        },
-        statusHistory: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-        },
-        _count: {
-          select: { photos: true },
-        },
-      },
+      select: vehicleListSelect,
     }),
   ]);
 
