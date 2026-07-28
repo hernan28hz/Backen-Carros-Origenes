@@ -50,12 +50,16 @@ Usa el host tipo `srv1665.hstgr.io` solo para conectarte desde fuera de Hostinge
 
 ## Ajustes para bajar consumo en Hostinger
 
-La app ya limita el pool de MySQL si `DATABASE_URL` no trae `connection_limit`. En hosting compartido esto ayuda a evitar picos de conexiones y CPU.
+La app usa Prisma con `engineType = "client"` y el adapter `@prisma/adapter-mariadb`. Esto mantiene la misma base MySQL, pero evita cargar el motor Rust de Prisma (`libquery_engine-*.so.node`) que crea los hilos `tokio-runtime-worker`.
+
+El adapter usa el driver JavaScript `mariadb`, compatible con MySQL. El nombre del paquete no significa que debas migrar la base a MariaDB.
+
+La app limita el pool del driver MySQL con `DATABASE_CONNECTION_LIMIT`. En hosting compartido esto ayuda a evitar picos de conexiones y CPU.
 
 Variables utiles:
 
 - `DATABASE_CONNECTION_LIMIT=2` o `3`: mantiene pocas conexiones abiertas a MySQL. Usa `2` si Hostinger sigue marcando consumo alto.
-- `DATABASE_POOL_TIMEOUT=10`: corta esperas largas cuando MySQL esta saturado.
+- `DATABASE_POOL_TIMEOUT=10`: corta esperas largas cuando MySQL esta saturado. El valor se interpreta en segundos.
 - `PUBLIC_CATALOG_CACHE_SECONDS=259200`: permite que navegador/CDN reutilicen el catalogo publico por 3 dias.
 - `PUBLIC_CATALOG_STALE_SECONDS=259200`: permite responder con catalogo reciente hasta 3 dias adicionales mientras se revalida.
 - `COMPLIANCE_RUN_ON_STARTUP=false`: evita que cada reinicio escanee vencimientos inmediatamente.
@@ -116,25 +120,19 @@ npm install
 npx prisma generate
 ```
 
-Luego crea las tablas. Tienes dos opciones:
+Si la base ya existe y ya tiene las tablas correctas, no ejecutes `prisma db push` ni `prisma migrate dev`.
 
-### Opcion A: recomendada si quieres respetar migraciones
+Para un despliegue nuevo que debe aplicar migraciones ya versionadas:
 
 ```bash
 npm run prisma:deploy
 ```
 
-### Opcion B: util si solo quieres empujar el esquema actual
-
-```bash
-npx prisma db push
-```
-
-Como tu proyecto ya tiene carpeta `prisma/migrations`, conviene usar primero `migrate deploy`.
+Si la base de produccion ya esta funcionando y no hay migraciones pendientes, no necesitas tocar tablas.
 
 ## 7. Crear el usuario administrador
 
-Cuando la base ya exista, ejecuta:
+Solo si todavia no existe el usuario administrador:
 
 ```bash
 npm run seed:admin
@@ -172,7 +170,19 @@ Debe devolver:
 { "status": "ok", "database": "ok" }
 ```
 
-Si responde `database: "error"`, la app esta viva pero MySQL no esta disponible para Prisma. Revisa `DATABASE_URL`, reinicia la app y vuelve a ejecutar migraciones/seed.
+Si responde `database: "error"`, la app esta viva pero MySQL no esta disponible para Prisma. Revisa `DATABASE_URL`, reinicia la app y revisa `stderr.log`.
+
+Para confirmar que el numero de hilos bajo:
+
+```bash
+PID=$(pgrep -u "$(whoami)" -f 'lsnode:.*/grupowlogist.com/nodejs' | head -n 1)
+
+ps -o pid,ppid,nlwp,etime,%cpu,%mem,rss,vsz,stat,cmd -p "$PID"
+
+ps -T -p "$PID" -o comm= | sort | uniq -c | sort -nr
+```
+
+Ya no deberian aparecer los 64 hilos `tokio-runtime-worker` del motor Rust.
 
 ## 9. Cuidado con las fotos subidas
 
@@ -197,10 +207,10 @@ Para una version inicial puede servir asi. Para algo mas robusto, despues convie
 4. Subir proyecto sin `.env` ni `node_modules`
 5. Ejecutar `npm install`
 6. Ejecutar `npx prisma generate`
-7. Ejecutar `npm run prisma:deploy`
-8. Ejecutar `npm run seed:admin`
+7. Ejecutar `npm run prisma:deploy` solo si hay migraciones pendientes o es una base nueva
+8. Ejecutar `npm run seed:admin` solo si falta el admin
 9. Iniciar con `npm start`
-10. Probar `/health`
+10. Probar `/health`, `/health?database=1` y revisar hilos con `ps -T`
 
 ## Recomendacion importante
 

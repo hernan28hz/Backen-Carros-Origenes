@@ -2,6 +2,8 @@
 
 Backend Node.js + Express + Prisma para inventario de vehiculos, usuarios, fotos, finanzas, catalogo publico y alertas por correo.
 
+Prisma esta configurado con `engineType = "client"` y `@prisma/adapter-mariadb` para conectarse a MySQL sin cargar el motor Rust de Prisma en produccion.
+
 ## Requisitos
 
 - Node.js `>=20.9.0`
@@ -69,10 +71,10 @@ No subas:
 ```bash
 npm install
 npx prisma generate
-npm run prisma:deploy
-npm run seed:admin
 npm start
 ```
+
+En una base nueva, ejecuta `npm run prisma:deploy` antes de crear el admin. En una base de produccion existente, no ejecutes `prisma db push` ni `prisma migrate dev`.
 
 ## Verificacion
 
@@ -86,6 +88,7 @@ Si `/health?database=1` falla, revisa que `DATABASE_URL` sea exactamente con `12
 ## Notas clave
 
 - Start command en Hostinger: `npm start`
+- La base sigue siendo MySQL; el adapter `mariadb` es compatible con MySQL.
 - Las fotos subidas se guardan en `uploads/vehicles/`.
 - El cache de imagenes se genera en `uploads/.cache/`.
 - Los correos de vencimiento quedan activos con `COMPLIANCE_NOTIFICATIONS_ENABLED=true`.
