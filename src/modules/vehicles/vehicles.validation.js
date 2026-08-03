@@ -16,6 +16,7 @@ const createVehicleSchema = z.object({
     model: z.string().min(1),
     assignedOperator: z.string().trim().max(120).optional(),
     year: z.number().int().gte(1900).lte(2100),
+    currentMileage: z.number().int().nonnegative(),
     currentStatus: z
       .enum(["REGISTERED", "AVAILABLE", "IN_MAINTENANCE", "OUT_OF_SERVICE", "SOLD"])
       .optional(),
@@ -27,6 +28,7 @@ const createVehicleSchema = z.object({
 const updateVehicleDetailsSchema = z.object({
   body: z.object({
     assignedOperator: z.string().trim().max(120).optional(),
+    currentMileage: z.number().int().nonnegative().optional(),
     observations: z.string().trim().max(1000).optional(),
     soatExpiry: z.string().datetime({ offset: true }).optional(),
     tecnomecanicaExpiry: z.string().datetime({ offset: true }).optional(),

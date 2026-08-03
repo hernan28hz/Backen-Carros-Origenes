@@ -17,6 +17,102 @@ const PRIMARY_ADMIN_ID = "adminWlogit01";
 const PRIMARY_ADMIN_IDS = [PRIMARY_ADMIN_ID, "admin-origenes-001"];
 const PRIMARY_ADMIN_EMAILS = ["admin01@grupowlogist.com", "admin@grupowlogist.com", "admin@origenesfleet.com"];
 
+const FINANCE_TYPE_OPTIONS = [
+  { value: "FLETE", label: "Ingreso por flete", income: true },
+  { value: "ALQUILER", label: "Ingreso por alquiler", income: true },
+  { value: "GASTO_GENERAL", label: "Gasto general", income: false },
+  { value: "COMPRA_VEHICULO", label: "Compra de vehiculo", income: false },
+  { value: "VENTA_VEHICULO", label: "Venta de vehiculo", income: true },
+  { value: "MANTENIMIENTO", label: "Mantenimiento", income: false },
+];
+
+const LEGACY_FINANCE_TYPE_LABELS = {
+  INGRESO: "Ingreso",
+  EGRESO: "Egreso",
+  COSTO_OPERATIVO: "Costo operativo",
+};
+
+const FINANCE_TYPE_CONFIG = {
+  FLETE: {
+    conceptFallback: "Ingreso por flete",
+    fields: [
+      { name: "amount", label: "Valor", type: "money", required: true },
+      { name: "vehicleId", label: "Vehiculo asignado", type: "vehicle", required: true },
+      { name: "originDestination", label: "Origen y destino", type: "text", required: true, full: true },
+      { name: "date", label: "Fecha", type: "date", required: true },
+      { name: "operatorName", label: "Operador", type: "text", required: true },
+      { name: "operatorExpenses", label: "Gastos del operador", type: "money" },
+      { name: "observations", label: "Observaciones", type: "textarea", full: true },
+    ],
+  },
+  ALQUILER: {
+    conceptFallback: "Ingreso por alquiler",
+    fields: [
+      { name: "amount", label: "Valor", type: "money", required: true },
+      { name: "vehicleId", label: "Vehiculo asociado", type: "vehicle", required: true },
+      { name: "vehicleMileage", label: "Kilometraje actual del vehiculo", type: "vehicleMileage" },
+      { name: "concept", label: "Concepto", type: "text", required: true, full: true },
+      { name: "startDate", label: "Fecha de inicio", type: "date", required: true },
+      { name: "endDate", label: "Fecha de finalizacion", type: "date" },
+      { name: "client", label: "Cliente", type: "text", required: true },
+      { name: "costPerKm", label: "Costo por kilometro", type: "money" },
+      { name: "mileageConsumed", label: "Kilometros consumidos", type: "number" },
+      { name: "associatedCosts", label: "Costos asociados", type: "money", full: true },
+      { name: "observations", label: "Observaciones", type: "textarea", full: true },
+    ],
+  },
+  GASTO_GENERAL: {
+    conceptFallback: "Gasto general",
+    fields: [
+      { name: "amount", label: "Valor", type: "money", required: true },
+      { name: "vehicleId", label: "Vehiculo asociado", type: "vehicle" },
+      { name: "concept", label: "Concepto", type: "text", required: true, full: true },
+      { name: "date", label: "Fecha", type: "date", required: true },
+      { name: "invoice", label: "Factura", type: "file" },
+      { name: "observations", label: "Observaciones", type: "textarea", full: true },
+    ],
+  },
+  COMPRA_VEHICULO: {
+    conceptFallback: "Compra de vehiculo",
+    fields: [
+      { name: "vehicleId", label: "Vehiculo adquirido", type: "vehicle", required: true },
+      { name: "amount", label: "Valor de compra", type: "money", required: true },
+      { name: "date", label: "Fecha de compra", type: "date", required: true },
+      { name: "vendor", label: "Vendedor o proveedor", type: "text", required: true },
+      { name: "paymentMethod", label: "Metodo de pago", type: "text" },
+      { name: "documentNumber", label: "Numero de factura o documento", type: "text" },
+      { name: "observations", label: "Observaciones", type: "textarea", full: true },
+    ],
+  },
+  VENTA_VEHICULO: {
+    conceptFallback: "Venta de vehiculo",
+    fields: [
+      { name: "vehicleId", label: "Vehiculo asociado", type: "vehicle", required: true },
+      { name: "amount", label: "Valor de venta", type: "money", required: true },
+      { name: "date", label: "Fecha de venta", type: "date", required: true },
+      { name: "buyer", label: "Comprador o cliente", type: "text", required: true },
+      { name: "paymentMethod", label: "Metodo de pago", type: "text" },
+      { name: "documentNumber", label: "Numero de factura o documento", type: "text" },
+      { name: "observations", label: "Observaciones", type: "textarea", full: true },
+    ],
+  },
+  MANTENIMIENTO: {
+    conceptFallback: "Mantenimiento",
+    fields: [
+      { name: "amount", label: "Valor", type: "money", required: true },
+      { name: "vehicleId", label: "Vehiculo asociado", type: "vehicle", required: true },
+      { name: "maintenanceType", label: "Tipo de mantenimiento", type: "text", required: true },
+      { name: "concept", label: "Concepto o descripcion", type: "text", required: true, full: true },
+      { name: "date", label: "Fecha", type: "date", required: true },
+      { name: "vendor", label: "Taller o proveedor", type: "text" },
+      { name: "odometerKm", label: "Kilometraje del vehiculo", type: "number" },
+      { name: "documentNumber", label: "Numero de factura o documento", type: "text" },
+      { name: "invoice", label: "Adjuntar factura", type: "file" },
+      { name: "observations", label: "Observaciones", type: "textarea", full: true },
+    ],
+  },
+};
+
 const SIDEBAR_ICONS = {
   home: iconSvg(
     '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/>'
@@ -83,7 +179,6 @@ const state = {
   publicCatalogError: "",
   privateVehicles: [],
   operators: [],
-  administrators: [],
   financeRecords: [],
   financeSummary: { income: 0, expenses: 0, balance: 0, byType: {} },
   sidebarCollapsed: localStorage.getItem("sidebar_collapsed") === "true",
@@ -152,8 +247,6 @@ const elements = {
   vehicleRouteContent: document.getElementById("vehicleRouteContent"),
   refreshOperatorsButton: document.getElementById("refreshOperatorsButton"),
   operatorsList: document.getElementById("operatorsList"),
-  administratorsSection: document.getElementById("administratorsSection"),
-  administratorsList: document.getElementById("administratorsList"),
   userForm: document.getElementById("userForm"),
   vehicleForm: document.getElementById("vehicleForm"),
   profileContent: document.getElementById("profileContent"),
@@ -161,9 +254,11 @@ const elements = {
   clearAdminMessagesButton: document.getElementById("clearAdminMessagesButton"),
   financePage: document.getElementById("financePage"),
   financeForm: document.getElementById("financeForm"),
+  financeDynamicFields: document.getElementById("financeDynamicFields"),
   financeList: document.getElementById("financeList"),
   financeSummary: document.getElementById("financeSummary"),
   refreshFinanceButton: document.getElementById("refreshFinanceButton"),
+  cancelFinanceEditButton: document.getElementById("cancelFinanceEditButton"),
   publicVehicleCardTemplate: document.getElementById("publicVehicleCardTemplate"),
   privateVehicleItemTemplate: document.getElementById("privateVehicleItemTemplate"),
   operatorItemTemplate: document.getElementById("operatorItemTemplate"),
@@ -216,12 +311,20 @@ function bindEvents() {
   elements.mobileSidebarBackdrop.addEventListener("click", closeMobileSidebar);
   elements.refreshVehiclesButton.addEventListener("click", loadPrivateVehicles);
   elements.refreshOperatorsButton.addEventListener("click", () => {
-    Promise.all([loadOperators(), loadAdministrators()]);
+    loadOperators();
   });
   elements.userForm.addEventListener("submit", handleCreateUser);
   elements.vehicleForm.addEventListener("submit", handleCreateVehicle);
   elements.refreshFinanceButton.addEventListener("click", () => loadFinanceData({ force: true }));
   elements.financeForm.addEventListener("submit", handleCreateFinanceRecord);
+  getFinanceTypeSelect().addEventListener("change", () => renderFinanceDynamicFields());
+  elements.financeForm.addEventListener("change", (event) => {
+    if (event.target.matches('[name="vehicleId"]')) {
+      updateFinanceVehicleMileage();
+    }
+  });
+  elements.financeForm.addEventListener("input", handleFinanceFormInput);
+  elements.cancelFinanceEditButton.addEventListener("click", resetFinanceForm);
   elements.clearAdminMessagesButton.addEventListener("click", () => {
     state.systemMessages = [];
     persistMessages();
@@ -289,14 +392,9 @@ function handleDocumentClick(event) {
     return;
   }
 
-  const editAdminButton = event.target.closest("[data-edit-admin]");
-  if (editAdminButton) {
-    handleEditAdministrator(editAdminButton.dataset.editAdmin);
-  }
-
-  const deleteAdminButton = event.target.closest("[data-delete-admin]");
-  if (deleteAdminButton) {
-    handleDeleteOperator(deleteAdminButton.dataset.deleteAdmin);
+  const viewFinanceButton = event.target.closest("[data-view-finance]");
+  if (viewFinanceButton) {
+    handleViewFinanceRecord(viewFinanceButton.dataset.viewFinance);
     return;
   }
 
@@ -481,7 +579,7 @@ function renderAppChrome(routeName) {
   const titleInfo = titles[routeName] || titles.dashboard;
   elements.pageKicker.textContent = titleInfo.kicker;
   elements.pageTitle.textContent = titleInfo.title;
-  setBadge(elements.sidebarRoleBadge, state.user?.role || "Visitante", state.user ? "info" : "neutral");
+  setBadge(elements.sidebarRoleBadge, state.user ? formatRoleLabel(state.user) : "Visitante", state.user ? "info" : "neutral");
   setBadge(
     elements.apiStatusBadge,
     state.apiHealthy ? "API activa" : "API no disponible",
@@ -635,7 +733,7 @@ async function loadPublicCatalog(options = {}) {
   renderCurrentRoute();
 
   try {
-    state.catalogVehicles = await apiFetch("/catalog/vehicles", { auth: false, fresh: force });
+    state.catalogVehicles = await apiFetch("/catalog/vehicles", { auth: false, fresh: true });
     state.publicCatalogLoaded = true;
     state.publicCatalogLoadedAt = Date.now();
     renderCurrentRoute();
@@ -651,7 +749,7 @@ async function loadPublicCatalog(options = {}) {
 
 async function loadPrivateData() {
   if (!state.token) return;
-  await Promise.all([loadCurrentUser(), loadPrivateVehicles(), loadOperators(), loadAdministrators(), loadFinanceData()]);
+  await Promise.all([loadCurrentUser(), loadPrivateVehicles(), loadOperators(), loadFinanceData()]);
 }
 
 async function loadCurrentUser(options = {}) {
@@ -703,24 +801,6 @@ async function loadOperators(options = {}) {
     }
   } finally {
     state.refreshLocks.operators = false;
-  }
-}
-
-async function loadAdministrators(options = {}) {
-  const { silent = false } = options;
-  if (!isPrimaryAdminUser()) {
-    state.administrators = [];
-    renderCurrentRoute();
-    return;
-  }
-
-  try {
-    state.administrators = await apiFetch("/admin/administrators");
-    renderCurrentRoute();
-  } catch (error) {
-    if (!silent) {
-      pushToast("error", error.message);
-    }
   }
 }
 
@@ -872,7 +952,7 @@ async function renderVehicleRoute(vehicleId, options = {}) {
 }
 
 function renderOperatorsPage() {
-  const canManageUsers = state.user?.role === "ADMIN";
+  const canManageUsers = isPrimaryAdminUser();
   const createUserCard = elements.userForm.closest(".card");
   const userRoleSelect = elements.userForm.querySelector('[name="role"]');
   const adminRoleOption = userRoleSelect?.querySelector('option[value="ADMIN"]');
@@ -882,8 +962,6 @@ function renderOperatorsPage() {
   if (adminRoleOption) {
     adminRoleOption.disabled = !isPrimaryAdminUser();
   }
-
-  elements.administratorsSection.classList.toggle("hidden", !isPrimaryAdminUser());
 
   if (!state.operators.length) {
     elements.operatorsList.innerHTML = '<div class="empty-panel">No hay usuarios registrados.</div>';
@@ -900,13 +978,17 @@ function renderOperatorsPage() {
               </div>
             </div>
             <div class="list-card-meta">
-              <span class="status-pill info">${escapeHtml(user.role)}</span>
+              <span class="status-pill info">${escapeHtml(formatRoleLabel(user))}</span>
               <span class="status-pill ${user.isActive ? "available" : "maintenance"}">${user.isActive ? "Activo" : "Inactivo"}</span>
               ${
                 canManageUsers
                   ? `
                     <button class="button button-secondary" type="button" data-edit-user="${escapeAttribute(user.id)}">Editar</button>
-                    <button class="button button-ghost operator-delete-button" type="button" data-delete-operator="${escapeAttribute(user.id)}">Eliminar</button>
+                    ${
+                      state.user?.id !== user.id
+                        ? `<button class="button button-ghost operator-delete-button" type="button" data-delete-operator="${escapeAttribute(user.id)}">Eliminar</button>`
+                        : ""
+                    }
                   `
                   : ""
               }
@@ -916,37 +998,6 @@ function renderOperatorsPage() {
       )
       .join("");
   }
-
-  if (!isPrimaryAdminUser()) {
-    elements.administratorsList.innerHTML = "";
-    return;
-  }
-
-  if (!state.administrators.length) {
-    elements.administratorsList.innerHTML = '<div class="empty-panel">No hay administradores registrados.</div>';
-    return;
-  }
-
-  elements.administratorsList.innerHTML = state.administrators
-    .map(
-      (admin) => `
-        <article class="list-card">
-          <div class="list-card-main">
-            <div class="avatar-chip operator-avatar">${escapeHtml(initialsForName(admin.name))}</div>
-            <div>
-              <strong class="operator-name">${escapeHtml(admin.name)}</strong>
-              <span class="operator-email">${escapeHtml(admin.email)} - ${escapeHtml(formatDate(admin.createdAt))}</span>
-            </div>
-          </div>
-          <div class="list-card-meta">
-            <span class="status-pill ${admin.isActive ? "available" : "maintenance"}">${admin.isActive ? "Activo" : "Inactivo"}</span>
-            <button class="button button-secondary" type="button" data-edit-admin="${admin.id}">Editar</button>
-            <button class="button button-ghost" type="button" data-delete-admin="${admin.id}">Eliminar</button>
-          </div>
-        </article>
-      `
-    )
-    .join("");
 }
 
 function renderProfilePage() {
@@ -960,7 +1011,7 @@ function renderProfilePage() {
   elements.profileContent.innerHTML = `
     <article><strong>Nombre</strong><span>${escapeHtml(state.user.name)}</span></article>
     <article><strong>Usuario</strong><span>${escapeHtml(state.user.email)}</span></article>
-    <article><strong>Rol</strong><span>${escapeHtml(state.user.role)}</span></article>
+    <article><strong>Rol</strong><span>${escapeHtml(formatRoleLabel(state.user))}</span></article>
     <article><strong>Sesion</strong><span>Activa en esta aplicacion</span></article>
     <article class="profile-email-card">
       <div>
@@ -1066,40 +1117,154 @@ function renderAdminMessages() {
 }
 
 function renderFinancePage() {
+  renderFinanceDynamicFields();
   renderFinanceVehicleOptions();
   renderFinanceSummary();
   renderFinanceRecords();
 }
 
 function renderFinanceVehicleOptions() {
-  const select = elements.financeForm.querySelector('[name="vehicleId"]');
-  if (!select) return;
+  const selects = elements.financeForm.querySelectorAll('[name="vehicleId"]');
+  if (!selects.length) return;
 
-  const currentValue = select.value;
-  select.innerHTML = `
-    <option value="">Sin vehiculo</option>
-    ${state.privateVehicles
-      .map(
-        (vehicle) =>
-          `<option value="${escapeAttribute(vehicle.id)}">${escapeHtml(`${vehicle.plate} - ${vehicle.brand} ${vehicle.model}`)}</option>`
-      )
-      .join("")}
+  selects.forEach((select) => {
+    const currentValue = select.value || select.dataset.selectedValue || "";
+    select.innerHTML = `
+      <option value="">Sin vehiculo</option>
+      ${state.privateVehicles
+        .map(
+          (vehicle) =>
+            `<option value="${escapeAttribute(vehicle.id)}">${escapeHtml(`${vehicle.plate} - ${vehicle.brand} ${vehicle.model}${vehicle.currentMileage === null || vehicle.currentMileage === undefined ? "" : ` - ${formatInteger(vehicle.currentMileage)} km`}`)}</option>`
+        )
+        .join("")}
+    `;
+    select.value = currentValue;
+    select.dataset.selectedValue = currentValue;
+  });
+
+  updateFinanceVehicleMileage();
+}
+
+function renderFinanceDynamicFields(record = null) {
+  const form = elements.financeForm;
+  const type = getFinanceTypeSelect().value || "FLETE";
+  const config = FINANCE_TYPE_CONFIG[type] || FINANCE_TYPE_CONFIG.FLETE;
+  if (!record && elements.financeDynamicFields.dataset.renderedType === type && elements.financeDynamicFields.childElementCount) {
+    renderFinanceVehicleOptions();
+    return;
+  }
+
+  const currentValues = record || getFinanceFormValues();
+
+  elements.financeDynamicFields.innerHTML = config.fields.map((field) => renderFinanceField(field, currentValues)).join("");
+  elements.financeDynamicFields.dataset.renderedType = type;
+  renderFinanceVehicleOptions();
+  formatFinanceMoneyInputs();
+  updateFinanceVehicleMileage();
+}
+
+function renderFinanceField(field, values = {}) {
+  const value = values[field.name] ?? "";
+  const required = field.required ? " required" : "";
+  const labelClass = field.full ? ' class="full-span"' : "";
+  const escapedName = escapeAttribute(field.name);
+  const escapedLabel = escapeHtml(field.label);
+
+  if (field.type === "vehicle") {
+    return `
+      <label${labelClass}>
+        <span>${escapedLabel}</span>
+        <select name="${escapedName}" data-selected-value="${escapeAttribute(value)}"${required}>
+          <option value="">Sin vehiculo</option>
+        </select>
+      </label>
+    `;
+  }
+
+  if (field.type === "vehicleMileage") {
+    const vehicleId = values.vehicleId || "";
+    const vehicle = state.privateVehicles.find((item) => item.id === vehicleId);
+    const mileage = vehicle?.currentMileage;
+    return `
+      <label>
+        <span>${escapedLabel}</span>
+        <input type="text" data-vehicle-mileage readonly value="${escapeAttribute(mileage === null || mileage === undefined ? "Sin registrar" : `${formatInteger(mileage)} km`)}" />
+      </label>
+    `;
+  }
+
+  if (field.type === "textarea") {
+    return `
+      <label${labelClass}>
+        <span>${escapedLabel}</span>
+        <textarea name="${escapedName}" maxlength="2000"${required}>${escapeHtml(value)}</textarea>
+      </label>
+    `;
+  }
+
+  if (field.type === "file") {
+    return `
+      <label${labelClass}>
+        <span>${escapedLabel}</span>
+        <input name="${escapedName}" type="file" accept="image/*" />
+      </label>
+    `;
+  }
+
+  const inputType = field.type === "money" ? "text" : field.type;
+  const inputMode = field.type === "money" || field.type === "number" ? ' inputmode="numeric"' : "";
+  const moneyAttr = field.type === "money" ? ' data-money-input="true"' : "";
+  const maxLength = field.type === "text" ? ' maxlength="191"' : "";
+  const normalizedValue = field.type === "money" ? formatPlainCop(value) : field.type === "date" ? formatDateInputValue(value) : value;
+
+  return `
+    <label${labelClass}>
+      <span>${escapedLabel}</span>
+      <input name="${escapedName}" type="${inputType}" value="${escapeAttribute(normalizedValue)}"${inputMode}${moneyAttr}${maxLength}${required} />
+    </label>
   `;
-  select.value = currentValue;
+}
+
+function getFinanceFormValues() {
+  const form = elements.financeForm;
+  const values = {};
+  new FormData(form).forEach((value, key) => {
+    if (!(value instanceof File)) {
+      values[key] = value;
+    }
+  });
+  return values;
+}
+
+function updateFinanceVehicleMileage() {
+  const output = elements.financeForm.querySelector("[data-vehicle-mileage]");
+  const vehicleSelect = elements.financeForm.querySelector('[name="vehicleId"]');
+  if (!output || !vehicleSelect) return;
+
+  const vehicle = state.privateVehicles.find((item) => item.id === vehicleSelect.value);
+  output.value = vehicle?.currentMileage === null || vehicle?.currentMileage === undefined ? "Sin registrar" : `${formatInteger(vehicle.currentMileage)} km`;
+}
+
+function getFinanceTypeSelect() {
+  return elements.financeForm.querySelector('[name="type"]');
+}
+
+function getFinanceRecordIdInput() {
+  return elements.financeForm.querySelector('[name="recordId"]');
 }
 
 function renderFinanceSummary() {
   const summary = state.financeSummary || { income: 0, expenses: 0, balance: 0 };
   elements.financeSummary.innerHTML = `
-    <article class="stat-card">
+    <article class="stat-card finance-summary-card finance-summary-income">
       <span>Ingresos</span>
       <strong>${escapeHtml(formatMoney(summary.income || 0))}</strong>
     </article>
-    <article class="stat-card">
-      <span>Egresos y costos</span>
+    <article class="stat-card finance-summary-card finance-summary-expenses">
+      <span>Gastos y costos</span>
       <strong>${escapeHtml(formatMoney(summary.expenses || 0))}</strong>
     </article>
-    <article class="stat-card">
+    <article class="stat-card finance-summary-card finance-summary-balance">
       <span>Balance</span>
       <strong>${escapeHtml(formatMoney(summary.balance || 0))}</strong>
     </article>
@@ -1125,7 +1290,8 @@ function renderFinanceRecords() {
             <div class="message-copy">${escapeHtml(record.client || "Sin cliente")} - ${escapeHtml(formatCalendarDate(record.date))}</div>
           </div>
           <div class="list-card-meta">
-            <span class="status-pill ${isFinanceIncome(record.type) ? "available" : "service"}">${escapeHtml(formatMoney(record.amount))}</span>
+            <span class="status-pill ${isFinanceIncome(record.type) ? "available" : "service"}">${escapeHtml(formatMoney(getFinanceDisplayAmount(record)))}</span>
+            <button class="button button-secondary" type="button" data-view-finance="${escapeAttribute(record.id)}">Ver</button>
             <button class="button button-secondary" type="button" data-edit-finance="${escapeAttribute(record.id)}">Editar</button>
             <button class="button button-ghost" type="button" data-delete-finance="${escapeAttribute(record.id)}">Eliminar</button>
           </div>
@@ -1334,8 +1500,13 @@ function renderCatalogOverview(vehicles, activeStatus = "ALL") {
     total: vehicles.filter((vehicle) => vehicle.currentStatus === entry.status).length,
   }));
 
+  const statusFilterEntries = [
+    ...statusEntries,
+    { status: "ALL", label: "Todos los estados", total, color: "#1f7ae0" },
+  ];
+
   elements.catalogOverviewStats.innerHTML = `
-    ${statusEntries
+    ${statusFilterEntries
       .map(
         (entry) => `
           <button
@@ -1419,8 +1590,7 @@ async function handleDeleteVehicle(vehicleId) {
 }
 
 async function handleDeleteOperator(operatorId) {
-  const operator =
-    state.operators.find((item) => item.id === operatorId) || state.administrators.find((item) => item.id === operatorId);
+  const operator = state.operators.find((item) => item.id === operatorId);
   const label = operator ? `${operator.name} (${operator.email})` : "este usuario";
   if (!window.confirm(`Vas a eliminar ${label}. Esta accion no se puede deshacer.`)) {
     return;
@@ -1430,49 +1600,10 @@ async function handleDeleteOperator(operatorId) {
     await apiFetch(`/users/${operatorId}`, { method: "DELETE" });
     addSystemMessage("success", "Usuario eliminado", `${label} fue eliminado correctamente.`);
     pushToast("success", "Usuario eliminado correctamente.");
-    await Promise.all([loadOperators(), loadAdministrators()]);
+    await loadOperators();
   } catch (error) {
     pushToast("error", error.message);
     addSystemMessage("error", "Fallo al eliminar usuario", error.message);
-  }
-}
-
-async function handleEditAdministrator(adminId) {
-  const administrator = state.administrators.find((item) => item.id === adminId);
-  if (!administrator) return;
-
-  const nextName = window.prompt("Nombre del administrador", administrator.name);
-  if (nextName === null) return;
-
-  const nextIdentifier = window.prompt("Email o identificador del administrador", administrator.email);
-  if (nextIdentifier === null) return;
-
-  const nextPassword = window.prompt("Nueva contrasena (deja vacio para no cambiarla)", "");
-  if (nextPassword === null) return;
-
-  const trimmedName = nextName.trim();
-  const trimmedIdentifier = nextIdentifier.trim();
-  if (!trimmedName || !trimmedIdentifier) {
-    pushToast("error", "Nombre y usuario son obligatorios.");
-    return;
-  }
-
-  try {
-    await apiFetch(`/users/${adminId}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        name: trimmedName,
-        identifier: trimmedIdentifier,
-        ...(nextPassword.trim() ? { password: nextPassword.trim() } : {}),
-      }),
-    });
-
-    addSystemMessage("success", "Administrador actualizado", `${trimmedName} fue actualizado correctamente.`);
-    pushToast("success", "Administrador actualizado correctamente.");
-    await loadAdministrators();
-  } catch (error) {
-    pushToast("error", error.message);
-    addSystemMessage("error", "Fallo al actualizar administrador", error.message);
   }
 }
 
@@ -1494,8 +1625,9 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
   const isAdmin = userRole === "ADMIN";
   const meta = getStatusMeta(vehicle.currentStatus);
   const latestPhoto = vehicle.photos?.[0]?.url || "";
-  const creator = vehicle.createdBy ? `${vehicle.createdBy.name} (${vehicle.createdBy.role})` : "Sin dato";
+  const creator = vehicle.createdBy ? `${vehicle.createdBy.name} (${formatRoleLabel(vehicle.createdBy)})` : "Usuario eliminado";
   const assignedOperator = vehicle.assignedOperator || "Sin asignar";
+  const currentMileage = vehicle.currentMileage === null || vehicle.currentMileage === undefined ? "No registrado" : `${formatInteger(vehicle.currentMileage)} km`;
   const observations = vehicle.observations || "Sin observaciones";
   const soatExpiry = vehicle.soatExpiry ? formatCalendarDate(vehicle.soatExpiry) : "No registrado";
   const tecnomecanicaExpiry = vehicle.tecnomecanicaExpiry ? formatCalendarDate(vehicle.tecnomecanicaExpiry) : "No registrado";
@@ -1516,6 +1648,10 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
         <label>
           <span>Operador asignado</span>
           <input name="assignedOperator" value="${escapeAttribute(vehicle.assignedOperator || "")}" placeholder="Nombre del operador" />
+        </label>
+        <label>
+          <span>Kilometraje actual</span>
+          <input name="currentMileage" type="number" min="0" step="1" inputmode="numeric" value="${escapeAttribute(vehicle.currentMileage ?? "")}" placeholder="Ej: 125000" />
         </label>
         <label class="full-span">
           <span>Observaciones</span>
@@ -1585,6 +1721,7 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
         ${renderDetailField("Fecha de registro", formatDate(vehicle.createdAt))}
         ${renderDetailField("Creado por", creator)}
         ${renderDetailField("Operador asignado", assignedOperator)}
+        ${renderDetailField("Kilometraje actual", currentMileage)}
         ${renderDetailField("Vencimiento de SOAT", soatExpiry, complianceItems[0])}
         ${renderDetailField("Vencimiento Tecnomecanica", tecnomecanicaExpiry, complianceItems[1])}
         ${renderDetailField("Vencimiento Impuesto Vehicular", vehicleTaxExpiry, complianceItems[2])}
@@ -1754,6 +1891,7 @@ function attachVehicleDetailHandlers(container, vehicle, options = {}) {
           method: "PATCH",
           body: JSON.stringify({
             assignedOperator: emptyToUndefined(form.get("assignedOperator")),
+            currentMileage: numberInputToOptionalInteger(form.get("currentMileage")),
             observations: emptyToUndefined(form.get("observations")),
             soatExpiry: dateInputToIsoString(form.get("soatExpiry")),
             tecnomecanicaExpiry: dateInputToIsoString(form.get("tecnomecanicaExpiry")),
@@ -1904,7 +2042,7 @@ async function handleLogin(event) {
     localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(state.user));
     localStorage.removeItem(STORAGE_KEYS.legacyToken);
     localStorage.removeItem(STORAGE_KEYS.legacyUser);
-    addSystemMessage("success", "Sesion iniciada", `${state.user.name} entro como ${state.user.role}.`);
+    addSystemMessage("success", "Sesion iniciada", `${state.user.name} entro como ${formatRoleLabel(state.user)}.`);
     await loadPrivateData();
     navigate(getDefaultPrivateRoute(), { replace: true });
     pushToast("success", "Sesion iniciada correctamente.");
@@ -1918,7 +2056,6 @@ function handleLogout() {
   state.user = null;
   state.privateVehicles = [];
   state.operators = [];
-  state.administrators = [];
   state.financeRecords = [];
   state.financeSummary = { income: 0, expenses: 0, balance: 0, byType: {} };
   localStorage.removeItem(STORAGE_KEYS.token);
@@ -1932,7 +2069,7 @@ function handleLogout() {
 
 async function handleCreateUser(event) {
   event.preventDefault();
-  if (state.user?.role !== "ADMIN") return;
+  if (!isPrimaryAdminUser()) return;
 
   const formElement = event.currentTarget;
   const form = new FormData(formElement);
@@ -1949,9 +2086,9 @@ async function handleCreateUser(event) {
     });
 
     formElement.reset();
-    addSystemMessage("success", "Usuario creado", `${user.name} fue registrado como ${user.role}.`);
+    addSystemMessage("success", "Usuario creado", `${user.name} fue registrado como ${formatRoleLabel(user)}.`);
     pushToast("success", "Usuario creado correctamente.");
-    await Promise.all([loadOperators(), loadAdministrators()]);
+    await loadOperators();
   } catch (error) {
     pushToast("error", error.message);
     addSystemMessage("error", "Fallo al crear usuario", error.message);
@@ -2033,6 +2170,7 @@ async function handleCreateVehicle(event) {
         model: String(form.get("model")).trim(),
         assignedOperator: emptyToUndefined(form.get("assignedOperator")),
         year: Number(form.get("year")),
+        currentMileage: Number(form.get("currentMileage")),
         currentStatus: emptyToUndefined(form.get("currentStatus")),
       }),
     });
@@ -2082,32 +2220,39 @@ async function handleCreateFinanceRecord(event) {
   if (!canAccessFinance()) return;
 
   const formElement = event.currentTarget;
-  const form = new FormData(formElement);
+  const recordId = emptyToUndefined(getFinanceRecordIdInput().value);
+  const type = String(getFinanceTypeSelect().value || "");
+
+  if (type === "VENTA_VEHICULO") {
+    const confirmed = window.confirm("Al guardar esta venta, el vehiculo asociado cambiara al estado Vendido. Deseas continuar?");
+    if (!confirmed) return;
+  }
+
+  // FormData excludes disabled controls, so capture the values before locking the form.
+  const payload = buildFinanceFormData(formElement);
+  if (type === "VENTA_VEHICULO") {
+    payload.set("confirmVehicleSold", "true");
+  }
+  const requestPayload = buildFinanceRequestPayload(payload);
 
   setFormBusy(formElement, true, "Guardando movimiento...");
 
   try {
-    const dateValue = String(form.get("date") || "");
-    await apiFetch("/finance", {
-      method: "POST",
-      body: JSON.stringify({
-        type: String(form.get("type")),
-        concept: String(form.get("concept")).trim(),
-        amount: Number(form.get("amount")),
-        date: dateInputToIsoString(dateValue),
-        client: emptyToUndefined(form.get("client")),
-        vehicleId: emptyToUndefined(form.get("vehicleId")),
-        observations: emptyToUndefined(form.get("observations")),
-        costPerKm: emptyToUndefined(form.get("costPerKm")),
-        averageFreight: emptyToUndefined(form.get("averageFreight")),
-        associatedCosts: emptyToUndefined(form.get("associatedCosts")),
-      }),
+
+    await apiFetch(recordId ? `/finance/${recordId}` : "/finance", {
+      method: recordId ? "PATCH" : "POST",
+      body: requestPayload.body,
+      isMultipart: requestPayload.isMultipart,
     });
 
-    formElement.reset();
-    addSystemMessage("success", "Movimiento financiero creado", "El registro fue guardado correctamente.");
-    pushToast("success", "Movimiento financiero guardado.");
-    await loadFinanceData({ force: true });
+    resetFinanceForm();
+    addSystemMessage(
+      "success",
+      recordId ? "Movimiento financiero actualizado" : "Movimiento financiero creado",
+      "El registro fue guardado correctamente."
+    );
+    pushToast("success", recordId ? "Movimiento financiero actualizado." : "Movimiento financiero guardado.");
+    await Promise.all([loadFinanceData({ force: true }), loadPrivateVehicles({ silent: true })]);
   } catch (error) {
     pushToast("error", error.message);
     addSystemMessage("error", "Fallo al guardar movimiento financiero", error.message);
@@ -2142,52 +2287,232 @@ async function handleEditFinanceRecord(recordId) {
   const record = state.financeRecords.find((item) => item.id === recordId);
   if (!record) return;
 
-  const nextType = window.prompt(
-    "Tipo (INGRESO, EGRESO, FLETE, COMPRA_VEHICULO, VENTA_VEHICULO, COSTO_OPERATIVO, MANTENIMIENTO)",
-    record.type
-  );
-  if (nextType === null) return;
-
-  const nextConcept = window.prompt("Concepto", record.concept);
-  if (nextConcept === null) return;
-
-  const nextAmount = window.prompt("Valor", String(record.amount || 0));
-  if (nextAmount === null) return;
-
-  const nextDate = window.prompt("Fecha (YYYY-MM-DD)", formatDateInputValue(record.date));
-  if (nextDate === null) return;
-
-  const normalizedType = nextType.trim().toUpperCase();
-  const normalizedAmount = Number(nextAmount);
-  if (
-    !["INGRESO", "EGRESO", "FLETE", "COMPRA_VEHICULO", "VENTA_VEHICULO", "COSTO_OPERATIVO", "MANTENIMIENTO"].includes(
-      normalizedType
-    ) ||
-    !nextConcept.trim() ||
-    Number.isNaN(normalizedAmount)
-  ) {
-    pushToast("error", "Tipo, concepto y valor deben ser validos.");
+  if (!FINANCE_TYPE_CONFIG[record.type]) {
+    pushToast("error", "Este movimiento usa un tipo antiguo. Crea uno nuevo con los tipos actuales.");
     return;
   }
 
-  try {
-    await apiFetch(`/finance/${recordId}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        type: normalizedType,
-        concept: nextConcept.trim(),
-        amount: normalizedAmount,
-        date: dateInputToIsoString(nextDate),
-      }),
-    });
+  getFinanceRecordIdInput().value = record.id;
+  getFinanceTypeSelect().value = record.type;
+  renderFinanceDynamicFields(record);
+  elements.cancelFinanceEditButton.classList.remove("hidden");
+  elements.financeForm.querySelector('button[type="submit"]').textContent = "Actualizar movimiento";
+  elements.financeForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
-    addSystemMessage("success", "Movimiento financiero actualizado", `${nextConcept.trim()} fue actualizado correctamente.`);
-    pushToast("success", "Movimiento financiero actualizado.");
-    await loadFinanceData({ force: true });
-  } catch (error) {
-    pushToast("error", error.message);
-    addSystemMessage("error", "Fallo al actualizar movimiento financiero", error.message);
+function buildFinanceFormData(formElement) {
+  const form = new FormData(formElement);
+  const type = String(form.get("type") || "");
+  const config = FINANCE_TYPE_CONFIG[type] || FINANCE_TYPE_CONFIG.FLETE;
+  const payload = new FormData();
+  const conceptFallback = config.conceptFallback || getFinanceTypeLabel(type);
+
+  payload.set("type", type);
+  payload.set("concept", emptyToUndefined(form.get("concept")) || conceptFallback);
+
+  config.fields.forEach((field) => {
+    if (field.name === "invoice") {
+      const file = form.get("invoice");
+      if (file instanceof File && file.size > 0) {
+        payload.set("invoice", file);
+      }
+      return;
+    }
+
+    const value = form.get(field.name);
+    if (field.type === "money") {
+      const parsedValue = parseCopInput(value);
+      if (parsedValue !== undefined) {
+        payload.set(field.name, String(parsedValue));
+      }
+      return;
+    }
+
+    if (field.type === "date") {
+      const normalizedDate = emptyToUndefined(value);
+      if (normalizedDate) {
+        payload.set(field.name, dateInputToIsoString(normalizedDate));
+      }
+      return;
+    }
+
+    const normalizedValue = emptyToUndefined(value);
+    if (normalizedValue !== undefined) {
+      payload.set(field.name, normalizedValue);
+    }
+  });
+
+  if (!payload.has("date")) {
+    const dateSource = form.get("startDate") || form.get("endDate") || formatDateInputValue(new Date());
+    payload.set("date", dateInputToIsoString(String(dateSource)));
   }
+
+  return payload;
+}
+
+function buildFinanceRequestPayload(payload) {
+  const invoice = payload.get("invoice");
+  if (invoice instanceof File && invoice.size > 0) {
+    return { body: payload, isMultipart: true };
+  }
+
+  const body = {};
+  payload.forEach((value, key) => {
+    if (value instanceof File) return;
+    body[key] = value;
+  });
+
+  return { body: JSON.stringify(body), isMultipart: false };
+}
+
+function resetFinanceForm() {
+  elements.financeForm.reset();
+  getFinanceRecordIdInput().value = "";
+  getFinanceTypeSelect().value = "FLETE";
+  elements.financeDynamicFields.dataset.renderedType = "";
+  elements.cancelFinanceEditButton.classList.add("hidden");
+  elements.financeForm.querySelector('button[type="submit"]').textContent = "Guardar movimiento";
+  renderFinanceDynamicFields();
+}
+
+function handleFinanceFormInput(event) {
+  if (!event.target.matches("[data-money-input]")) return;
+  event.target.value = formatPlainCop(event.target.value);
+}
+
+function formatFinanceMoneyInputs() {
+  elements.financeForm.querySelectorAll("[data-money-input]").forEach((input) => {
+    input.value = formatPlainCop(input.value);
+  });
+}
+
+function parseCopInput(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits ? Number(digits) : undefined;
+}
+
+function formatPlainCop(value) {
+  const parsedValue = parseCopInput(value);
+  if (parsedValue === undefined) return "";
+  return new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(parsedValue);
+}
+
+function getFinanceDisplayAmount(record) {
+  if (record.type === "FLETE") {
+    return Number(record.amount || 0) - Number(record.operatorExpenses || 0);
+  }
+
+  return record.amount;
+}
+
+function handleViewFinanceRecord(recordId) {
+  const record = state.financeRecords.find((item) => item.id === recordId);
+  if (!record) return;
+
+  const details = getFinanceDetailRows(record);
+  const modal = document.createElement("div");
+  modal.className = "modal-backdrop";
+  modal.innerHTML = `
+    <article class="card finance-detail-modal">
+      <div class="section-header">
+        <div>
+          <p class="section-kicker">${escapeHtml(getFinanceTypeLabel(record.type))}</p>
+          <h3>${escapeHtml(record.concept || getFinanceTypeLabel(record.type))}</h3>
+        </div>
+        <button class="button button-secondary" type="button" data-close-modal>Cerrar</button>
+      </div>
+      <div class="finance-detail-grid">
+        ${details
+          .map(
+            (detail) => `
+              <article>
+                <span>${escapeHtml(detail.label)}</span>
+                <strong>${detail.html ? detail.value : escapeHtml(detail.value || "Sin dato")}</strong>
+              </article>
+            `
+          )
+          .join("")}
+      </div>
+    </article>
+  `;
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal || event.target.closest("[data-close-modal]")) {
+      modal.remove();
+    }
+  });
+  document.body.appendChild(modal);
+}
+
+function getFinanceDetailRows(record) {
+  const vehicleLabel = record.vehicle
+    ? `${record.vehicle.plate} - ${record.vehicle.brand} ${record.vehicle.model}`
+    : "Sin vehiculo asociado";
+  const invoice = record.invoiceUrl
+    ? `<a href="${escapeAttribute(record.invoiceUrl)}" target="_blank" rel="noopener">Ver factura</a>`
+    : "Sin factura";
+  const baseRows = [
+    { label: "Valor", value: formatMoney(record.amount) },
+    { label: "Vehiculo", value: vehicleLabel },
+  ];
+
+  if (record.type === "FLETE") {
+    return [
+      ...baseRows,
+      { label: "Recorrido", value: record.originDestination },
+      { label: "Fecha", value: formatCalendarDate(record.date) },
+      { label: "Operador", value: record.operatorName },
+      { label: "Gastos del operador", value: formatMoney(record.operatorExpenses || 0) },
+      { label: "Ingreso neto", value: formatMoney(getFinanceDisplayAmount(record)) },
+      { label: "Observaciones", value: record.observations },
+    ];
+  }
+
+  if (record.type === "ALQUILER") {
+    return [
+      ...baseRows,
+      { label: "Cliente", value: record.client },
+      { label: "Inicio", value: formatCalendarDate(record.startDate || record.date) },
+      { label: "Finalizacion", value: record.endDate ? formatCalendarDate(record.endDate) : "Pendiente" },
+      { label: "Costo por kilometro", value: record.costPerKm ? formatMoney(record.costPerKm) : "Sin dato" },
+      { label: "Kilometros consumidos", value: record.mileageConsumed ? `${record.mileageConsumed} km` : "Sin dato" },
+      { label: "Costos asociados", value: formatMoneyOrText(record.associatedCosts) },
+      { label: "Observaciones", value: record.observations },
+    ];
+  }
+
+  if (record.type === "COMPRA_VEHICULO" || record.type === "VENTA_VEHICULO") {
+    return [
+      ...baseRows,
+      { label: record.type === "VENTA_VEHICULO" ? "Comprador o cliente" : "Vendedor o proveedor", value: record.buyer || record.vendor },
+      { label: "Fecha", value: formatCalendarDate(record.date) },
+      { label: "Metodo de pago", value: record.paymentMethod },
+      { label: "Documento", value: record.documentNumber },
+      { label: "Observaciones", value: record.observations },
+    ];
+  }
+
+  if (record.type === "MANTENIMIENTO") {
+    return [
+      ...baseRows,
+      { label: "Tipo de mantenimiento", value: record.maintenanceType },
+      { label: "Concepto", value: record.concept },
+      { label: "Fecha", value: formatCalendarDate(record.date) },
+      { label: "Taller o proveedor", value: record.vendor },
+      { label: "Kilometraje", value: record.odometerKm ? `${record.odometerKm} km` : "Sin dato" },
+      { label: "Documento", value: record.documentNumber },
+      { label: "Factura", value: invoice, html: Boolean(record.invoiceUrl) },
+      { label: "Observaciones", value: record.observations },
+    ];
+  }
+
+  return [
+    ...baseRows,
+    { label: "Concepto", value: record.concept },
+    { label: "Fecha", value: formatCalendarDate(record.date) },
+    { label: "Cliente", value: record.client },
+    { label: "Factura", value: invoice, html: Boolean(record.invoiceUrl) },
+    { label: "Observaciones", value: record.observations },
+  ];
 }
 
 function setFormBusy(formElement, isBusy, buttonLabel = "Procesando...") {
@@ -2254,7 +2579,7 @@ async function optimizeImageFile(file) {
 
 async function handleEditUser(userId) {
   const user = state.operators.find((item) => item.id === userId);
-  if (!user || state.user?.role !== "ADMIN") return;
+  if (!user || !isPrimaryAdminUser()) return;
 
   const nextName = window.prompt("Nombre del usuario", user.name);
   if (nextName === null) return;
@@ -2262,7 +2587,7 @@ async function handleEditUser(userId) {
   const nextIdentifier = window.prompt("Email o identificador del usuario", user.email);
   if (nextIdentifier === null) return;
 
-  const nextRole = window.prompt("Rol del usuario (DIRECTOR o GERENTE)", user.role);
+  const nextRole = window.prompt("Rol del usuario (DIRECTOR, GERENTE o TECNICO)", formatRoleLabel(user));
   if (nextRole === null) return;
 
   const nextPassword = window.prompt("Nueva contrasena (deja vacio para no cambiarla)", "");
@@ -2270,8 +2595,9 @@ async function handleEditUser(userId) {
 
   const trimmedName = nextName.trim();
   const trimmedIdentifier = nextIdentifier.trim();
-  const normalizedRole = nextRole.trim().toUpperCase();
-  if (!trimmedName || !trimmedIdentifier || !["DIRECTOR", "GERENTE"].includes(normalizedRole)) {
+  const normalizedRoleLabel = nextRole.trim().toUpperCase();
+  const normalizedRole = normalizedRoleLabel === "TECNICO" ? "ADMIN" : normalizedRoleLabel;
+  if (!trimmedName || !trimmedIdentifier || !["DIRECTOR", "GERENTE", "ADMIN"].includes(normalizedRole)) {
     pushToast("error", "Nombre, usuario y rol valido son obligatorios.");
     return;
   }
@@ -2506,9 +2832,16 @@ function setVehicleImage(image, url, plate, options = {}) {
     sizes = "100vw",
   } = options;
   const source = url || placeholderImage(fallbackLabel);
+  const fallbackSource = isVehicleUploadUrl(source) ? source : placeholderImage(fallbackLabel);
 
   image.src = vehicleImageUrl(source, width);
   image.alt = `Vehiculo ${plate}`;
+  image.onerror = () => {
+    image.onerror = null;
+    image.removeAttribute("srcset");
+    image.removeAttribute("sizes");
+    image.src = fallbackSource;
+  };
 
   const srcset = vehicleImageSrcSet(source, widths);
   if (srcset) {
@@ -2696,21 +3029,13 @@ function getDefaultPrivateRoute() {
 }
 
 function isFinanceIncome(type) {
-  return ["INGRESO", "FLETE", "VENTA_VEHICULO"].includes(type);
+  return ["INGRESO", "FLETE", "ALQUILER", "VENTA_VEHICULO"].includes(type);
 }
 
 function getFinanceTypeLabel(type) {
-  const labels = {
-    INGRESO: "Ingreso",
-    EGRESO: "Egreso",
-    FLETE: "Flete",
-    COMPRA_VEHICULO: "Compra de vehiculo",
-    VENTA_VEHICULO: "Venta de vehiculo",
-    COSTO_OPERATIVO: "Costo operativo",
-    MANTENIMIENTO: "Mantenimiento",
-  };
+  const labels = Object.fromEntries(FINANCE_TYPE_OPTIONS.map((option) => [option.value, option.label]));
 
-  return labels[type] || type;
+  return labels[type] || LEGACY_FINANCE_TYPE_LABELS[type] || type;
 }
 
 function formatMoney(value) {
@@ -2719,6 +3044,22 @@ function formatMoney(value) {
     currency: "COP",
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
+}
+
+function formatMoneyOrText(value) {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) return "Sin dato";
+  if (!/^\d[\d.]*$/.test(normalized)) return normalized;
+  return formatMoney(Number(normalized.replaceAll(".", "")));
+}
+
+function formatInteger(value) {
+  return new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Number(value || 0));
+}
+
+function numberInputToOptionalInteger(value) {
+  const normalized = String(value ?? "").trim();
+  return normalized ? Number(normalized) : undefined;
 }
 
 function readJson(key) {
@@ -2732,6 +3073,23 @@ function readJson(key) {
 
 function isPrimaryAdminUser() {
   return PRIMARY_ADMIN_IDS.includes(state.user?.id) && PRIMARY_ADMIN_EMAILS.includes(String(state.user?.email || "").toLowerCase());
+}
+
+function isPrimaryAdminRecord(user) {
+  return PRIMARY_ADMIN_IDS.includes(user?.id) && PRIMARY_ADMIN_EMAILS.includes(String(user?.email || "").toLowerCase());
+}
+
+function formatRoleLabel(userOrRole) {
+  const role = typeof userOrRole === "string" ? userOrRole : userOrRole?.role;
+  if (typeof userOrRole === "object" && isPrimaryAdminRecord(userOrRole)) {
+    return "Super Admin";
+  }
+
+  if (role === "ADMIN") {
+    return "Tecnico";
+  }
+
+  return role || "Usuario";
 }
 
 function escapeHtml(value) {

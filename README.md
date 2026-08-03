@@ -74,21 +74,15 @@ npx prisma generate
 npm start
 ```
 
+En Hostinger, Passenger arranca directamente `src/server.js` segun el `.htaccess`, por lo que `npm start` solo es necesario para ejecucion manual o local.
+
 En una base nueva, ejecuta `npm run prisma:deploy` antes de crear el admin. En una base de produccion existente, no ejecutes `prisma db push` ni `prisma migrate dev`.
-
-## Verificacion
-
-```text
-/health
-/health?database=1
-```
-
-Si `/health?database=1` falla, revisa que `DATABASE_URL` sea exactamente con `127.0.0.1` y que la clave MySQL sea correcta.
 
 ## Notas clave
 
-- Start command en Hostinger: `npm start`
+- Hostinger usa Passenger/`lsnode` y `PassengerStartupFile src/server.js`.
 - La base sigue siendo MySQL; el adapter `mariadb` es compatible con MySQL.
+- No se necesita `TOKIO_WORKER_THREADS`; esa variable solo aplicaba a la mitigacion con motor Rust.
 - Las fotos subidas se guardan en `uploads/vehicles/`.
 - El cache de imagenes se genera en `uploads/.cache/`.
 - Los correos de vencimiento quedan activos con `COMPLIANCE_NOTIFICATIONS_ENABLED=true`.

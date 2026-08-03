@@ -11,7 +11,28 @@ function normalizeNullableText(value) {
 
 function normalizeDecimal(value) {
   if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value === "string") {
+    return value.replace(/\./g, "").replace(",", ".");
+  }
   return value;
+}
+
+function normalizeInteger(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  return Number(value);
+}
+
+function normalizeBoolean(value) {
+  return value === true || value === "true";
+}
+
+function financeAmountForSummary(record) {
+  const amount = Number(record.amount || 0);
+  if (record.type === "FLETE") {
+    return amount - Number(record.operatorExpenses || 0);
+  }
+
+  return amount;
 }
 
 function buildFinanceData(body) {
@@ -32,8 +53,45 @@ function buildFinanceData(body) {
   assign("costPerKm", normalizeDecimal(body.costPerKm));
   assign("averageFreight", normalizeDecimal(body.averageFreight));
   assign("associatedCosts", normalizeNullableText(body.associatedCosts));
+  assign("originDestination", normalizeNullableText(body.originDestination));
+  assign("operatorName", normalizeNullableText(body.operatorName));
+  assign("operatorExpenses", normalizeDecimal(body.operatorExpenses));
+  assign("startDate", body.startDate ? new Date(body.startDate) : undefined);
+  assign("endDate", body.endDate ? new Date(body.endDate) : undefined);
+  assign("mileageConsumed", normalizeInteger(body.mileageConsumed));
+  assign("vendor", normalizeNullableText(body.vendor));
+  assign("buyer", normalizeNullableText(body.buyer));
+  assign("paymentMethod", normalizeNullableText(body.paymentMethod));
+  assign("documentNumber", normalizeNullableText(body.documentNumber));
+  assign("maintenanceType", normalizeNullableText(body.maintenanceType));
+  assign("odometerKm", normalizeInteger(body.odometerKm));
 
   return data;
+}
+
+function assignInvoiceData(data, file) {
+  if (!file) return;
+
+  data.invoiceUrl = `/uploads/finance/${file.filename}`;
+  data.invoiceFileName = file.filename;
+  data.invoiceMimeType = file.mimetype;
+  data.invoiceSize = file.size;
+}
+
+async function markVehicleAsSold(tx, vehicleId, userId) {
+  await tx.vehicle.update({
+    where: { id: vehicleId },
+    data: { currentStatus: "SOLD" },
+  });
+
+  await tx.vehicleStatusHistory.create({
+    data: {
+      vehicleId,
+      statusType: "SOLD",
+      description: "Venta registrada desde finanzas",
+      updatedById: userId,
+    },
+  });
 }
 
 function serializeDecimal(value) {
@@ -46,6 +104,7 @@ function serializeFinanceRecord(record) {
     amount: serializeDecimal(record.amount),
     costPerKm: serializeDecimal(record.costPerKm),
     averageFreight: serializeDecimal(record.averageFreight),
+    operatorExpenses: serializeDecimal(record.operatorExpenses),
   };
 }
 
@@ -77,18 +136,19 @@ const listFinanceRecords = asyncHandler(async (_req, res) => {
 });
 
 const getFinanceSummary = asyncHandler(async (_req, res) => {
-  const records = await prisma.financeRecord.groupBy({
-    by: ["type"],
-    _sum: {
+  const records = await prisma.financeRecord.findMany({
+    select: {
+      type: true,
       amount: true,
+      operatorExpenses: true,
     },
   });
 
   const summary = records.reduce(
     (accumulator, record) => {
-      const amount = Number(record._sum.amount || 0);
+      const amount = financeAmountForSummary(record);
       accumulator.byType[record.type] = (accumulator.byType[record.type] || 0) + amount;
-      if (["INGRESO", "FLETE", "VENTA_VEHICULO"].includes(record.type)) {
+      if (["INGRESO", "FLETE", "ALQUILER", "VENTA_VEHICULO"].includes(record.type)) {
         accumulator.income += amount;
       } else {
         accumulator.expenses += amount;
@@ -104,6 +164,7 @@ const getFinanceSummary = asyncHandler(async (_req, res) => {
 
 const createFinanceRecord = asyncHandler(async (req, res) => {
   const data = buildFinanceData(req.body);
+  assignInvoiceData(data, req.file);
 
   if (data.vehicleId) {
     const vehicle = await prisma.vehicle.findUnique({
@@ -124,6 +185,10 @@ const createFinanceRecord = asyncHandler(async (req, res) => {
       },
       include: financeInclude,
     });
+
+    if (created.type === "VENTA_VEHICULO" && created.vehicleId && normalizeBoolean(req.body.confirmVehicleSold)) {
+      await markVehicleAsSold(tx, created.vehicleId, req.user.id);
+    }
 
     await createAuditLog(
       {
@@ -153,6 +218,7 @@ const updateFinanceRecord = asyncHandler(async (req, res) => {
   }
 
   const data = buildFinanceData(req.body);
+  assignInvoiceData(data, req.file);
 
   if (data.vehicleId) {
     const vehicle = await prisma.vehicle.findUnique({
@@ -171,6 +237,10 @@ const updateFinanceRecord = asyncHandler(async (req, res) => {
       data,
       include: financeInclude,
     });
+
+    if (updated.type === "VENTA_VEHICULO" && updated.vehicleId && normalizeBoolean(req.body.confirmVehicleSold)) {
+      await markVehicleAsSold(tx, updated.vehicleId, req.user.id);
+    }
 
     await createAuditLog(
       {

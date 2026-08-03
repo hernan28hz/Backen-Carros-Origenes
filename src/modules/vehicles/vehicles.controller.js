@@ -11,6 +11,7 @@ const ADMIN_DETAIL_FIELDS = {
   vehicleTaxExpiry: "Vencimiento impuesto vehicular",
   pendingProcedures: "Tramites pendientes",
   fines: "Multas",
+  currentMileage: "Kilometraje actual",
 };
 
 const VEHICLE_DETAIL_HISTORY_LIMIT = Number(process.env.VEHICLE_DETAIL_HISTORY_LIMIT || 25);
@@ -23,6 +24,7 @@ const vehicleListSelect = {
   model: true,
   year: true,
   currentStatus: true,
+  currentMileage: true,
   assignedOperator: true,
   createdAt: true,
   updatedAt: true,
@@ -78,6 +80,10 @@ function normalizeDetailValue(field, value) {
     return normalizeNullableDate(value);
   }
 
+  if (field === "currentMileage") {
+    return Number(value);
+  }
+
   return normalizeNullableText(value);
 }
 
@@ -91,7 +97,7 @@ function normalizeNullableDate(value) {
 }
 
 function serializeHistoryValue(field, value) {
-  if (!value) {
+  if (value === null || value === undefined || value === "") {
     return null;
   }
 
@@ -99,11 +105,11 @@ function serializeHistoryValue(field, value) {
     return value.toISOString().slice(0, 10);
   }
 
-  return value;
+  return String(value);
 }
 
 const createVehicle = asyncHandler(async (req, res) => {
-  const { plate, vin, brand, model, assignedOperator, year, currentStatus } = req.body;
+  const { plate, vin, brand, model, assignedOperator, year, currentMileage, currentStatus } = req.body;
   const normalizedPlate = plate.toUpperCase().trim();
 
   const vehicle = await prisma.$transaction(async (tx) => {
@@ -115,6 +121,7 @@ const createVehicle = asyncHandler(async (req, res) => {
         model,
         assignedOperator: assignedOperator?.trim() || null,
         year,
+        currentMileage,
         currentStatus: currentStatus || "AVAILABLE",
         createdById: req.user.id,
         statusHistory: {
@@ -174,7 +181,7 @@ const getVehicleById = asyncHandler(async (req, res) => {
 
 const updateVehicleDetails = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { assignedOperator, observations, soatExpiry, tecnomecanicaExpiry, vehicleTaxExpiry, pendingProcedures, fines } =
+  const { assignedOperator, currentMileage, observations, soatExpiry, tecnomecanicaExpiry, vehicleTaxExpiry, pendingProcedures, fines } =
     req.body;
 
   const vehicle = await prisma.vehicle.findUnique({
@@ -182,6 +189,7 @@ const updateVehicleDetails = asyncHandler(async (req, res) => {
     select: {
       id: true,
       assignedOperator: true,
+      currentMileage: true,
       observations: true,
       soatExpiry: true,
       tecnomecanicaExpiry: true,
@@ -197,6 +205,7 @@ const updateVehicleDetails = asyncHandler(async (req, res) => {
 
   const payload = {
     assignedOperator,
+    currentMileage,
     observations,
     soatExpiry,
     tecnomecanicaExpiry,

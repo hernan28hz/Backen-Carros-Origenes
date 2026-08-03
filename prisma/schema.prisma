@@ -23,6 +23,8 @@ enum FinanceRecordType {
   INGRESO
   EGRESO
   FLETE
+  ALQUILER
+  GASTO_GENERAL
   COMPRA_VEHICULO
   VENTA_VEHICULO
   COSTO_OPERATIVO
@@ -88,8 +90,24 @@ model FinanceRecord {
   costPerKm     Decimal?          @db.Decimal(14, 2)
   averageFreight Decimal?         @db.Decimal(14, 2)
   associatedCosts String?
-  createdById   String
-  createdBy     User              @relation("FinanceRecordCreator", fields: [createdById], references: [id])
+  originDestination String?
+  operatorName  String?
+  operatorExpenses Decimal?       @db.Decimal(14, 2)
+  startDate     DateTime?
+  endDate       DateTime?
+  mileageConsumed Int?
+  vendor        String?
+  buyer         String?
+  paymentMethod String?
+  documentNumber String?
+  maintenanceType String?
+  odometerKm    Int?
+  invoiceUrl    String?
+  invoiceFileName String?
+  invoiceMimeType String?
+  invoiceSize   Int?
+  createdById   String?
+  createdBy     User?             @relation("FinanceRecordCreator", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
@@ -123,6 +141,7 @@ model Vehicle {
   model         String
   year          Int
   currentStatus VehicleStatusType      @default(AVAILABLE)
+  currentMileage Int?
   assignedOperator String?
   observations  String?
   soatExpiry    DateTime?
@@ -130,10 +149,10 @@ model Vehicle {
   vehicleTaxExpiry DateTime?
   pendingProcedures String?
   fines         String?
-  createdById   String
+  createdById   String?
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
-  createdBy     User                   @relation("VehicleCreator", fields: [createdById], references: [id])
+  createdBy     User?                  @relation("VehicleCreator", fields: [createdById], references: [id], onDelete: SetNull)
   statusHistory VehicleStatusHistory[]
   adminHistory  VehicleAdminHistory[]
   photos        VehiclePhoto[]
@@ -171,10 +190,10 @@ model VehicleStatusHistory {
   statusType  VehicleStatusType
   description String?
   date        DateTime          @default(now())
-  updatedById String
+  updatedById String?
   createdAt   DateTime          @default(now())
   vehicle     Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  updatedBy   User              @relation("StatusUpdater", fields: [updatedById], references: [id])
+  updatedBy   User?             @relation("StatusUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@index([vehicleId])
   @@index([vehicleId, createdAt])
@@ -190,10 +209,10 @@ model VehiclePhoto {
   mimeType    String
   size        Int
   description String?
-  uploadedById String
+  uploadedById String?
   createdAt   DateTime @default(now())
   vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  uploadedBy  User     @relation("PhotoUploader", fields: [uploadedById], references: [id])
+  uploadedBy  User?    @relation("PhotoUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
 
   @@index([vehicleId])
   @@index([vehicleId, createdAt])
@@ -206,10 +225,10 @@ model VehicleAdminHistory {
   field       String
   oldValue    String?
   newValue    String?
-  updatedById String
+  updatedById String?
   createdAt   DateTime @default(now())
   vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  updatedBy   User     @relation("VehicleAdminUpdater", fields: [updatedById], references: [id])
+  updatedBy   User?    @relation("VehicleAdminUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@index([vehicleId])
   @@index([vehicleId, createdAt])

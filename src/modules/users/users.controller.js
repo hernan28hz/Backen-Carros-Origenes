@@ -95,15 +95,12 @@ const ensureContactEmailIsAvailable = async (contactEmail, userId) => {
 
 function assertCanManageUserRole(requestUser, targetRole, action = "administrar") {
   if (targetRole === ROLES.ADMIN && !isPrimaryAdmin(requestUser)) {
-    throw new ApiError(403, `Solo el administrador principal puede ${action} administradores`);
+    throw new ApiError(403, `Solo el super admin puede ${action} tecnicos`);
   }
 }
 
 const listUsers = asyncHandler(async (req, res) => {
-  const where = isPrimaryAdmin(req.user) ? {} : { role: { not: ROLES.ADMIN } };
-
   const users = await prisma.user.findMany({
-    where,
     orderBy: { createdAt: "desc" },
     select: userListSelect,
   });
@@ -112,6 +109,10 @@ const listUsers = asyncHandler(async (req, res) => {
 });
 
 const createUser = asyncHandler(async (req, res) => {
+  if (!isPrimaryAdmin(req.user)) {
+    throw new ApiError(403, "Solo el super admin puede crear usuarios");
+  }
+
   const { name, identifier, password, role } = req.body;
 
   assertCanManageUserRole(req.user, role, "crear");
@@ -285,6 +286,10 @@ const confirmCurrentUserEmailVerification = asyncHandler(async (req, res) => {
 });
 
 const deleteUser = asyncHandler(async (req, res) => {
+  if (!isPrimaryAdmin(req.user)) {
+    throw new ApiError(403, "Solo el super admin puede eliminar usuarios");
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: req.params.id },
     select: userListSelect,
@@ -298,16 +303,6 @@ const deleteUser = asyncHandler(async (req, res) => {
 
   if (req.user.id === user.id) {
     throw new ApiError(400, "No puedes eliminar tu propio usuario");
-  }
-
-  if (
-    user._count.vehicles ||
-    user._count.statusUpdates ||
-    user._count.adminUpdates ||
-    user._count.photos ||
-    user._count.financeRecords
-  ) {
-    throw new ApiError(409, "No se puede eliminar el usuario porque tiene informacion relacionada");
   }
 
   await prisma.$transaction(async (tx) => {
@@ -335,6 +330,10 @@ const deleteUser = asyncHandler(async (req, res) => {
 });
 
 const updateUser = asyncHandler(async (req, res) => {
+  if (!isPrimaryAdmin(req.user)) {
+    throw new ApiError(403, "Solo el super admin puede editar usuarios");
+  }
+
   const existingUser = await prisma.user.findUnique({
     where: { id: req.params.id },
     select: {

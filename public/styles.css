@@ -738,6 +738,21 @@ h3 {
   font-size: 13px;
 }
 
+.finance-summary-income {
+  background: #effaf3;
+  border-color: #ccebd7;
+}
+
+.finance-summary-expenses {
+  background: #fff7eb;
+  border-color: #f4dfbd;
+}
+
+.finance-summary-balance {
+  background: #eef6ff;
+  border-color: #cadff5;
+}
+
 .public-vehicle-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -871,7 +886,8 @@ label span {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 36px;
   padding: 0 12px;
@@ -879,6 +895,60 @@ select {
   border-radius: var(--radius-input);
   background: #ffffff;
   color: var(--text-primary);
+}
+
+textarea {
+  min-height: 84px;
+  padding-top: 10px;
+  resize: vertical;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(10, 24, 38, 0.48);
+}
+
+.finance-detail-modal {
+  width: min(780px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+}
+
+.finance-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.finance-detail-grid article {
+  padding: var(--space-3);
+  border: 1px solid rgba(15, 43, 70, 0.08);
+  border-radius: var(--radius-card);
+  background: #f8fbff;
+}
+
+.finance-detail-grid span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.finance-detail-grid strong {
+  color: var(--bg-sidebar);
+  font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
 .app-shell {
@@ -1585,6 +1655,10 @@ select {
 }
 
 @media (max-width: 768px) {
+  .finance-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
   .pull-refresh-indicator {
     top: 74px;
   }

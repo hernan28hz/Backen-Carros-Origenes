@@ -3,6 +3,8 @@ const authMiddleware = require("../../middlewares/auth.middleware");
 const validate = require("../../middlewares/validate.middleware");
 const ApiError = require("../../utils/apiError");
 const { canManageFinance } = require("../../utils/permissions");
+const upload = require("./finance.upload");
+const { normalizeFinanceBody } = require("./finance.normalize");
 const {
   createFinanceRecordSchema,
   updateFinanceRecordSchema,
@@ -29,8 +31,8 @@ const requireFinanceAccess = (req, _res, next) => {
 router.use(authMiddleware, requireFinanceAccess);
 router.get("/", listFinanceRecords);
 router.get("/summary", getFinanceSummary);
-router.post("/", validate(createFinanceRecordSchema), createFinanceRecord);
-router.patch("/:id", validate(updateFinanceRecordSchema), updateFinanceRecord);
+router.post("/", upload.single("invoice"), normalizeFinanceBody, validate(createFinanceRecordSchema), createFinanceRecord);
+router.patch("/:id", upload.single("invoice"), normalizeFinanceBody, validate(updateFinanceRecordSchema), updateFinanceRecord);
 router.delete("/:id", validate(financeRecordIdSchema), deleteFinanceRecord);
 
 module.exports = router;

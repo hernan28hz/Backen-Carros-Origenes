@@ -30,7 +30,7 @@ const prisma = new PrismaClient();
         soat: v.soatExpiry,
         tecnomecanica: v.tecnomecanicaExpiry,
         vehicleTax: v.vehicleTaxExpiry,
-        email: v.createdBy.contactEmail,
+        email: v.createdBy?.contactEmail || null,
       })),
       null,
       2

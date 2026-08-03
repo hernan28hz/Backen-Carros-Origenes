@@ -42,7 +42,7 @@
       imagesrcset="/media/membreteW-360.webp 360w, /media/membreteW-640.webp 640w"
       imagesizes="(max-width: 768px) 142px, 190px"
     />
-    <link rel="stylesheet" href="/styles.css?v=1.7" />
+    <link rel="stylesheet" href="/styles.css?v=2.0" />
   </head>
   <body>
     <div id="pullToRefreshIndicator" class="pull-refresh-indicator" aria-live="polite">
@@ -290,7 +290,7 @@
                     <select name="role">
                       <option value="DIRECTOR">DIRECTOR</option>
                       <option value="GERENTE">GERENTE</option>
-                      <option value="ADMIN">ADMIN</option>
+                      <option value="ADMIN">TECNICO</option>
                     </select>
                   </label>
                   <button class="button button-primary full-span" type="submit">Crear usuario</button>
@@ -305,16 +305,6 @@
                   </div>
                 </div>
                 <div id="operatorsList" class="list-stack"></div>
-
-                <div id="administratorsSection" class="list-subsection hidden">
-                  <div class="section-header">
-                    <div>
-                      <p class="section-kicker">Control principal</p>
-                      <h3>Administradores registrados</h3>
-                    </div>
-                  </div>
-                  <div id="administratorsList" class="list-stack"></div>
-                </div>
               </article>
             </div>
           </section>
@@ -323,7 +313,7 @@
             <div class="section-header">
               <div>
                 <p class="section-kicker">Gestion financiera</p>
-                <h3>Ingresos, egresos y costos operativos</h3>
+                <h3>Ingresos, gastos y costos operativos generales</h3>
               </div>
               <button id="refreshFinanceButton" class="button button-secondary" type="button">Actualizar</button>
             </div>
@@ -339,58 +329,24 @@
                   </div>
                 </div>
 
-                <form id="financeForm" class="form-grid">
+                <form id="financeForm" class="form-grid" enctype="multipart/form-data">
+                  <input type="hidden" name="recordId" />
                   <label>
                     <span>Tipo</span>
                     <select name="type" required>
-                      <option value="INGRESO">Ingreso</option>
-                      <option value="EGRESO">Egreso</option>
-                      <option value="FLETE">Flete</option>
+                      <option value="FLETE">Ingreso por flete</option>
+                      <option value="ALQUILER">Ingreso por alquiler</option>
+                      <option value="GASTO_GENERAL">Gasto general</option>
                       <option value="COMPRA_VEHICULO">Compra de vehiculo</option>
                       <option value="VENTA_VEHICULO">Venta de vehiculo</option>
-                      <option value="COSTO_OPERATIVO">Costo operativo</option>
                       <option value="MANTENIMIENTO">Mantenimiento</option>
                     </select>
                   </label>
-                  <label>
-                    <span>Valor</span>
-                    <input name="amount" type="number" min="0" step="0.01" required />
-                  </label>
-                  <label class="full-span">
-                    <span>Concepto</span>
-                    <input name="concept" maxlength="160" required />
-                  </label>
-                  <label>
-                    <span>Fecha</span>
-                    <input name="date" type="date" required />
-                  </label>
-                  <label>
-                    <span>Cliente</span>
-                    <input name="client" maxlength="160" />
-                  </label>
-                  <label>
-                    <span>Vehiculo asociado</span>
-                    <select name="vehicleId">
-                      <option value="">Sin vehiculo</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>Costo por km</span>
-                    <input name="costPerKm" type="number" min="0" step="0.01" />
-                  </label>
-                  <label>
-                    <span>Promedio flete</span>
-                    <input name="averageFreight" type="number" min="0" step="0.01" />
-                  </label>
-                  <label class="full-span">
-                    <span>Costos asociados</span>
-                    <input name="associatedCosts" maxlength="2000" />
-                  </label>
-                  <label class="full-span">
-                    <span>Observaciones</span>
-                    <input name="observations" maxlength="2000" />
-                  </label>
-                  <button class="button button-primary full-span" type="submit">Guardar movimiento</button>
+                  <div id="financeDynamicFields" class="full-span form-grid"></div>
+                  <div class="form-actions full-span">
+                    <button class="button button-primary" type="submit">Guardar movimiento</button>
+                    <button id="cancelFinanceEditButton" class="button button-secondary hidden" type="button">Cancelar edicion</button>
+                  </div>
                 </form>
               </article>
 
@@ -465,6 +421,10 @@
                   <label>
                     <span>Anio</span>
                     <input name="year" type="number" min="1900" max="2100" value="2024" required />
+                  </label>
+                  <label>
+                    <span>Kilometraje actual</span>
+                    <input name="currentMileage" type="number" min="0" step="1" inputmode="numeric" placeholder="Ej: 125000" required />
                   </label>
                   <label>
                     <span>Estado inicial</span>
@@ -560,6 +520,6 @@
       </article>
     </template>
 
-    <script src="/app.js?v=1.7" defer></script>
+    <script src="/app.js?v=2.5" defer></script>
   </body>
   </html>

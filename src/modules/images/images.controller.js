@@ -117,7 +117,7 @@ const serveVehicleImageVariant = asyncHandler(async (req, res) => {
   res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
   res.setHeader("Vary", "Accept");
   res.type(`image/${format}`);
-  return res.sendFile(cachePath);
+  return res.sendFile(cachePath, { dotfiles: "allow" });
 });
 
 module.exports = {

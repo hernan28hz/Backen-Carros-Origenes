@@ -5,6 +5,19 @@ const THREE_DAYS_IN_SECONDS = 3 * 24 * 60 * 60;
 const PUBLIC_CATALOG_CACHE_SECONDS = Number(process.env.PUBLIC_CATALOG_CACHE_SECONDS || THREE_DAYS_IN_SECONDS);
 const PUBLIC_CATALOG_STALE_SECONDS = Number(process.env.PUBLIC_CATALOG_STALE_SECONDS || THREE_DAYS_IN_SECONDS);
 
+function serializePublicVehicle(vehicle) {
+  return {
+    id: vehicle.id,
+    plate: vehicle.plate,
+    brand: vehicle.brand,
+    model: vehicle.model,
+    operatorName: vehicle.assignedOperator || null,
+    currentStatus: vehicle.currentStatus,
+    photoUrl: vehicle.photos[0]?.url || null,
+    photoDescription: vehicle.photos[0]?.description || null,
+  };
+}
+
 const listPublicVehicles = asyncHandler(async (_req, res) => {
   const vehicles = await prisma.vehicle.findMany({
     orderBy: { createdAt: "desc" },
@@ -31,21 +44,17 @@ const listPublicVehicles = asyncHandler(async (_req, res) => {
   res.removeHeader("Surrogate-Control");
   res.removeHeader("CDN-Cache-Control");
   res.removeHeader("Vercel-CDN-Cache-Control");
+  if (process.env.NODE_ENV !== "production") {
+    res.setHeader("Cache-Control", "no-store");
+    return res.json(vehicles.map(serializePublicVehicle));
+  }
+
   res.setHeader(
     "Cache-Control",
     `public, max-age=${PUBLIC_CATALOG_CACHE_SECONDS}, stale-while-revalidate=${PUBLIC_CATALOG_STALE_SECONDS}`
   );
   return res.json(
-    vehicles.map((vehicle) => ({
-      id: vehicle.id,
-      plate: vehicle.plate,
-      brand: vehicle.brand,
-      model: vehicle.model,
-      operatorName: vehicle.assignedOperator || null,
-      currentStatus: vehicle.currentStatus,
-      photoUrl: vehicle.photos[0]?.url || null,
-      photoDescription: vehicle.photos[0]?.description || null,
-    }))
+    vehicles.map(serializePublicVehicle)
   );
 });
 

@@ -147,6 +147,8 @@ async function runComplianceNotificationCheck() {
   const candidates = [];
 
   for (const vehicle of vehicles) {
+    if (!vehicle.createdBy) continue;
+
     for (const documentInfo of DOCUMENTS) {
       const expiryDate = vehicle[documentInfo.field];
       if (!expiryDate) continue;

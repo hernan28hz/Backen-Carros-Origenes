@@ -1,7 +1,7 @@
 const prisma = require("../../config/prisma");
 const asyncHandler = require("../../utils/asyncHandler");
 const ApiError = require("../../utils/apiError");
-const { isPrimaryAdmin } = require("../../utils/adminAccess");
+const { isPrimaryAdmin, PRIMARY_ADMIN_IDS } = require("../../utils/adminAccess");
 const { ROLES } = require("../../utils/permissions");
 
 const vehicleListSelect = {
@@ -85,11 +85,14 @@ const listOperators = asyncHandler(async (_req, res) => {
 
 const listAdministrators = asyncHandler(async (req, res) => {
   if (!isPrimaryAdmin(req.user)) {
-    throw new ApiError(403, "No tienes permisos para ver administradores");
+    throw new ApiError(403, "No tienes permisos para ver tecnicos");
   }
 
   const administrators = await prisma.user.findMany({
-    where: { role: ROLES.ADMIN },
+    where: {
+      role: ROLES.ADMIN,
+      id: { notIn: PRIMARY_ADMIN_IDS },
+    },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
