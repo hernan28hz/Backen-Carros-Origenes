@@ -202,7 +202,7 @@ function buildBaseAttachments() {
   return [
     {
       filename: "iconGrupoW.png",
-      path: path.join(process.cwd(), "public", "media", "iconGrupoW.png"),
+      path: path.resolve(__dirname, "../../public/media/iconGrupoW.png"),
       cid: LOGO_CID,
     },
   ];
@@ -226,7 +226,7 @@ async function sendComplianceAlert(to, alert) {
   const mailer = getTransporter();
   const fromAddress = env.smtp.from || env.smtp.user;
   const attachments = buildBaseAttachments();
-  const photoPath = alert.photoUrl ? path.join(process.cwd(), alert.photoUrl.replace(/^\//, "")) : "";
+  const photoPath = alert.photoUrl ? path.resolve(__dirname, "../..", alert.photoUrl.replace(/^\//, "")) : "";
   const hasPhoto = Boolean(photoPath && fs.existsSync(photoPath));
 
   if (hasPhoto) {

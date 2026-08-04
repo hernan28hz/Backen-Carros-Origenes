@@ -5,7 +5,7 @@ const ApiError = require("../../utils/apiError");
 const asyncHandler = require("../../utils/asyncHandler");
 const { createAuditLog } = require("../../services/auditLog");
 
-const uploadDir = path.join(process.cwd(), "uploads", "vehicles");
+const uploadDir = path.resolve(__dirname, "../../../uploads/vehicles");
 
 const uploadVehiclePhoto = asyncHandler(async (req, res) => {
   const { id } = req.params;

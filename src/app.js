@@ -19,9 +19,10 @@ const imagesRoutes = require("./modules/images/images.routes");
 const financeRoutes = require("./modules/finance/finance.routes");
 
 const app = express();
-const publicIndexPath = path.join(process.cwd(), "public", "index.html");
-const publicStaticPath = path.join(process.cwd(), "public");
-const uploadsStaticPath = path.join(process.cwd(), "uploads");
+const projectRootPath = path.resolve(__dirname, "..");
+const publicIndexPath = path.join(projectRootPath, "public", "index.html");
+const publicStaticPath = path.join(projectRootPath, "public");
+const uploadsStaticPath = path.join(projectRootPath, "uploads");
 
 const setNoCacheHeaders = (res) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");

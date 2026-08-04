@@ -12,8 +12,9 @@ sharp.cache({
 });
 sharp.concurrency(Number(process.env.IMAGE_PROCESSING_CONCURRENCY || 1));
 
-const uploadDir = path.resolve(process.cwd(), "uploads", "vehicles");
-const cacheDir = path.resolve(process.cwd(), "uploads", ".cache", "vehicles");
+const projectRootPath = path.resolve(__dirname, "../../..");
+const uploadDir = path.join(projectRootPath, "uploads", "vehicles");
+const cacheDir = path.join(projectRootPath, "uploads", ".cache", "vehicles");
 const allowedWidths = [160, 320, 480, 640, 768, 960, 1280];
 const variantJobs = new Map();
 
