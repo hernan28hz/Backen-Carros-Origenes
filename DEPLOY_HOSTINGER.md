@@ -78,6 +78,8 @@ Incluye en el deploy:
 - `src/`
 - `public/`
 - `prisma/`
+- `uploads/.gitkeep`
+- `uploads/vehicles/.gitkeep`
 - `package.json`
 - `package-lock.json`
 
@@ -110,6 +112,14 @@ Tu entrada actual es:
 ```json
 "start": "node src/server.js"
 ```
+
+La app sirve el frontend desde `public/`. Si en Hostinger tienes que usar otra carpeta, puedes definir:
+
+```env
+PUBLIC_STATIC_DIR=public_html
+```
+
+Con la estructura normal del proyecto no necesitas esa variable; basta con subir `public/` completa junto a `package.json`.
 
 ## 6. Instala dependencias y Prisma
 

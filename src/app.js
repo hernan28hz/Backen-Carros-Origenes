@@ -1,3 +1,4 @@
+const fs = require("node:fs");
 const path = require("node:path");
 const express = require("express");
 const compression = require("compression");
@@ -20,9 +21,17 @@ const financeRoutes = require("./modules/finance/finance.routes");
 
 const app = express();
 const projectRootPath = path.resolve(__dirname, "..");
-const publicIndexPath = path.join(projectRootPath, "public", "index.html");
-const publicStaticPath = path.join(projectRootPath, "public");
+const publicStaticPath = resolveExistingPath(
+  process.env.PUBLIC_STATIC_DIR && path.resolve(projectRootPath, process.env.PUBLIC_STATIC_DIR),
+  path.join(projectRootPath, "public"),
+  path.join(projectRootPath, "public_html")
+);
+const publicIndexPath = publicStaticPath ? path.join(publicStaticPath, "index.html") : null;
 const uploadsStaticPath = path.join(projectRootPath, "uploads");
+
+function resolveExistingPath(...paths) {
+  return paths.find((candidatePath) => candidatePath && fs.existsSync(candidatePath)) || null;
+}
 
 const setNoCacheHeaders = (res) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
@@ -42,7 +51,7 @@ app.use(compression());
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "1mb" }));
 
 app.use(
-  express.static(publicStaticPath, {
+  express.static(publicStaticPath || path.join(projectRootPath, "public"), {
     etag: true,
     immutable: true,
     lastModified: true,
@@ -110,6 +119,13 @@ app.get(
   ],
   (_req, res) => {
     setNoCacheHeaders(res);
+    if (!publicIndexPath || !fs.existsSync(publicIndexPath)) {
+      res.status(500).type("text/plain").send(
+        "No se encontro public/index.html. Sube la carpeta public completa junto a package.json, o configura PUBLIC_STATIC_DIR si usas otra carpeta."
+      );
+      return;
+    }
+
     res.sendFile(publicIndexPath);
   }
 );
