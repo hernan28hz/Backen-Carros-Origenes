@@ -196,6 +196,22 @@ Eso significa:
 
 - el servidor necesita permiso de escritura en `uploads/`
 - si redeployas y Hostinger reemplaza archivos, podrias perder imagenes subidas
+- despues de cada deploy, verifica que la carpeta exista en el servidor:
+
+```text
+uploads/vehicles
+```
+
+- para subir fotos manualmente por FTP/File Manager, subelas ahi mismo, con el mismo nombre que esta guardado en la base de datos
+- puedes probar una foto entrando directo a:
+
+```text
+https://TU_DOMINIO/uploads/vehicles/NOMBRE-DE-LA-FOTO.jpg
+```
+
+Si esa URL directa no abre la imagen, el problema no esta en el catalogo sino en la ubicacion de la carpeta, permisos o en que la app Node no esta sirviendo `/uploads`.
+
+La interfaz carga las fotos directamente desde `/uploads/vehicles`. El optimizador `/images/vehicles` queda desactivado por defecto en el navegador para evitar fallos por configuracion del hosting.
 
 Para una version inicial puede servir asi. Para algo mas robusto, despues conviene mover fotos a almacenamiento externo.
 
