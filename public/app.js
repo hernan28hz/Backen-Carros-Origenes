@@ -2810,7 +2810,6 @@ function isVehicleUploadUrl(url) {
 
 function vehicleImageUrl(url, width) {
   if (!isVehicleUploadUrl(url)) return url;
-  if (window.GRUPOW_USE_IMAGE_VARIANTS !== true) return url;
 
   try {
     const fileName = decodeURIComponent(url.split("/").pop() || "");
