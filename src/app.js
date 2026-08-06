@@ -107,6 +107,7 @@ app.get(
     "/admin/operadores",
     "/admin/mensajes",
     "/finanzas",
+    "/vehiculo/:id/editar",
   ],
   (_req, res) => {
     setNoCacheHeaders(res);

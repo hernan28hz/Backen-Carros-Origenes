@@ -403,10 +403,6 @@
                     <input name="plate" placeholder="ABC123" required />
                   </label>
                   <label>
-                    <span>VIN</span>
-                    <input name="vin" placeholder="Opcional" />
-                  </label>
-                  <label>
                     <span>Marca</span>
                     <input name="brand" placeholder="Toyota" required />
                   </label>
@@ -415,16 +411,48 @@
                     <input name="model" placeholder="Corolla" required />
                   </label>
                   <label>
-                    <span>Operador asignado</span>
-                    <input name="assignedOperator" placeholder="Nombre del operador" />
-                  </label>
-                  <label>
                     <span>Anio</span>
                     <input name="year" type="number" min="1900" max="2100" value="2024" required />
                   </label>
                   <label>
+                    <span>Operador asignado</span>
+                    <input name="assignedOperator" placeholder="Nombre del operador" />
+                  </label>
+                  <label>
                     <span>Kilometraje actual</span>
                     <input name="currentMileage" type="number" min="0" step="1" inputmode="numeric" placeholder="Ej: 125000" required />
+                  </label>
+                  <label>
+                    <span>Propietario</span>
+                    <input name="owner" placeholder="Nombre del propietario" />
+                  </label>
+                  <label>
+                    <span>Vencimiento de SOAT</span>
+                    <input name="soatExpiry" type="date" />
+                  </label>
+                  <label>
+                    <span>Vencimiento Tecnomecanica</span>
+                    <input name="tecnomecanicaExpiry" type="date" />
+                  </label>
+                  <label>
+                    <span>Vencimiento Impuesto Vehicular</span>
+                    <input name="vehicleTaxExpiry" type="date" />
+                  </label>
+                  <label class="full-span">
+                    <span>Tramites pendientes</span>
+                    <input name="pendingProcedures" placeholder="Ej: traspaso, levantamiento de prenda" />
+                  </label>
+                  <label class="full-span">
+                    <span>Multas</span>
+                    <input name="fines" placeholder="Detalle de comparendos o saldo pendiente" />
+                  </label>
+                  <label>
+                    <span>VIN</span>
+                    <input name="vin" placeholder="Opcional" />
+                  </label>
+                  <label class="full-span">
+                    <span>Observaciones</span>
+                    <input name="observations" placeholder="Notas administrativas del vehiculo" />
                   </label>
                   <label>
                     <span>Estado inicial</span>

@@ -142,6 +142,7 @@ model Vehicle {
   year          Int
   currentStatus VehicleStatusType      @default(AVAILABLE)
   currentMileage Int?
+  owner         String?
   assignedOperator String?
   observations  String?
   soatExpiry    DateTime?

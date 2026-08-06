@@ -1,0 +1,2 @@
+ALTER TABLE `Vehicle`
+  ADD COLUMN `owner` VARCHAR(191) NULL;

@@ -1625,15 +1625,15 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
   const isAdmin = userRole === "ADMIN";
   const meta = getStatusMeta(vehicle.currentStatus);
   const latestPhoto = vehicle.photos?.[0]?.url || "";
-  const creator = vehicle.createdBy ? `${vehicle.createdBy.name} (${formatRoleLabel(vehicle.createdBy)})` : "Usuario eliminado";
-  const assignedOperator = vehicle.assignedOperator || "Sin asignar";
+  const creator = vehicle.createdBy ? `${vehicle.createdBy.name} (${formatRoleLabel(vehicle.createdBy)})` : "No registrado";
+  const assignedOperator = vehicle.assignedOperator || "No registrado";
   const currentMileage = vehicle.currentMileage === null || vehicle.currentMileage === undefined ? "No registrado" : `${formatInteger(vehicle.currentMileage)} km`;
-  const observations = vehicle.observations || "Sin observaciones";
+  const owner = vehicle.owner || "No registrado";
+  const observations = vehicle.observations || "No registrado";
   const soatExpiry = vehicle.soatExpiry ? formatCalendarDate(vehicle.soatExpiry) : "No registrado";
   const tecnomecanicaExpiry = vehicle.tecnomecanicaExpiry ? formatCalendarDate(vehicle.tecnomecanicaExpiry) : "No registrado";
   const vehicleTaxExpiry = vehicle.vehicleTaxExpiry ? formatCalendarDate(vehicle.vehicleTaxExpiry) : "No registrado";
-  const pendingProcedures = vehicle.pendingProcedures || "Sin tramites pendientes";
-  const fines = vehicle.fines || "Sin multas registradas";
+  const pendingOrFines = formatPendingProceduresAndFines(vehicle.pendingProcedures, vehicle.fines);
   const history = vehicle.statusHistory || [];
   const adminHistory = vehicle.adminHistory || [];
   const photos = vehicle.photos || [];
@@ -1646,6 +1646,18 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
   ];
   const detailFormFields = `
         <label>
+          <span>Marca</span>
+          <input name="brand" value="${escapeAttribute(vehicle.brand || "")}" placeholder="Toyota" required />
+        </label>
+        <label>
+          <span>Modelo</span>
+          <input name="model" value="${escapeAttribute(vehicle.model || "")}" placeholder="Corolla" required />
+        </label>
+        <label>
+          <span>Anio</span>
+          <input name="year" type="number" min="1900" max="2100" value="${escapeAttribute(vehicle.year ?? "")}" required />
+        </label>
+        <label>
           <span>Operador asignado</span>
           <input name="assignedOperator" value="${escapeAttribute(vehicle.assignedOperator || "")}" placeholder="Nombre del operador" />
         </label>
@@ -1653,9 +1665,9 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
           <span>Kilometraje actual</span>
           <input name="currentMileage" type="number" min="0" step="1" inputmode="numeric" value="${escapeAttribute(vehicle.currentMileage ?? "")}" placeholder="Ej: 125000" />
         </label>
-        <label class="full-span">
-          <span>Observaciones</span>
-          <input name="observations" value="${escapeAttribute(vehicle.observations || "")}" placeholder="Notas administrativas del vehiculo" />
+        <label>
+          <span>Propietario</span>
+          <input name="owner" value="${escapeAttribute(vehicle.owner || "")}" placeholder="Nombre del propietario" />
         </label>
         <label>
           <span>Vencimiento de SOAT</span>
@@ -1676,6 +1688,14 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
         <label class="full-span">
           <span>Multas</span>
           <input name="fines" value="${escapeAttribute(vehicle.fines || "")}" placeholder="Detalle de comparendos o saldo pendiente" />
+        </label>
+        <label>
+          <span>VIN</span>
+          <input name="vin" value="${escapeAttribute(vehicle.vin || "")}" placeholder="Opcional" />
+        </label>
+        <label class="full-span">
+          <span>Observaciones</span>
+          <input name="observations" value="${escapeAttribute(vehicle.observations || "")}" placeholder="Notas administrativas del vehiculo" />
         </label>
       `;
   return `
@@ -1714,19 +1734,18 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
       </div>
 
       <div class="detail-grid">
-        ${renderDetailField("Marca", vehicle.brand)}
-        ${renderDetailField("Modelo", vehicle.model)}
-        ${renderDetailField("Anio", String(vehicle.year))}
-        ${renderDetailField("VIN", vehicle.vin || "No registrado")}
-        ${renderDetailField("Fecha de registro", formatDate(vehicle.createdAt))}
-        ${renderDetailField("Creado por", creator)}
+        ${renderDetailField("Marca", vehicle.brand || "No registrado")}
+        ${renderDetailField("Modelo", vehicle.model || "No registrado")}
+        ${renderDetailField("Anio", vehicle.year ? String(vehicle.year) : "No registrado")}
         ${renderDetailField("Operador asignado", assignedOperator)}
         ${renderDetailField("Kilometraje actual", currentMileage)}
+        ${renderDetailField("Propietario", owner)}
         ${renderDetailField("Vencimiento de SOAT", soatExpiry, complianceItems[0])}
         ${renderDetailField("Vencimiento Tecnomecanica", tecnomecanicaExpiry, complianceItems[1])}
         ${renderDetailField("Vencimiento Impuesto Vehicular", vehicleTaxExpiry, complianceItems[2])}
-        ${renderDetailField("Tramites pendientes", pendingProcedures, { compact: false })}
-        ${renderDetailField("Multas", fines, { compact: false })}
+        ${renderDetailField("Tramites pendientes o multas", pendingOrFines, { compact: false })}
+        ${renderDetailField("VIN", vehicle.vin || "No registrado")}
+        ${renderDetailField("Creado por", creator)}
         ${renderDetailField("Observaciones", observations, { compact: false })}
       </div>
 
@@ -1890,14 +1909,19 @@ function attachVehicleDetailHandlers(container, vehicle, options = {}) {
         await apiFetch(`/vehicles/${vehicle.id}/details`, {
           method: "PATCH",
           body: JSON.stringify({
-            assignedOperator: emptyToUndefined(form.get("assignedOperator")),
-            currentMileage: numberInputToOptionalInteger(form.get("currentMileage")),
-            observations: emptyToUndefined(form.get("observations")),
-            soatExpiry: dateInputToIsoString(form.get("soatExpiry")),
-            tecnomecanicaExpiry: dateInputToIsoString(form.get("tecnomecanicaExpiry")),
-            vehicleTaxExpiry: dateInputToIsoString(form.get("vehicleTaxExpiry")),
-            pendingProcedures: emptyToUndefined(form.get("pendingProcedures")),
-            fines: emptyToUndefined(form.get("fines")),
+            brand: emptyToUndefined(form.get("brand")),
+            model: emptyToUndefined(form.get("model")),
+            year: numberInputToOptionalInteger(form.get("year")),
+            assignedOperator: emptyToNull(form.get("assignedOperator")),
+            currentMileage: numberInputToNullableInteger(form.get("currentMileage")),
+            owner: emptyToNull(form.get("owner")),
+            observations: emptyToNull(form.get("observations")),
+            soatExpiry: dateInputToNullableIsoString(form.get("soatExpiry")),
+            tecnomecanicaExpiry: dateInputToNullableIsoString(form.get("tecnomecanicaExpiry")),
+            vehicleTaxExpiry: dateInputToNullableIsoString(form.get("vehicleTaxExpiry")),
+            pendingProcedures: emptyToNull(form.get("pendingProcedures")),
+            fines: emptyToNull(form.get("fines")),
+            vin: emptyToNull(form.get("vin")),
           }),
         });
 
@@ -2171,6 +2195,13 @@ async function handleCreateVehicle(event) {
         assignedOperator: emptyToUndefined(form.get("assignedOperator")),
         year: Number(form.get("year")),
         currentMileage: Number(form.get("currentMileage")),
+        owner: emptyToUndefined(form.get("owner")),
+        soatExpiry: dateInputToIsoString(form.get("soatExpiry")),
+        tecnomecanicaExpiry: dateInputToIsoString(form.get("tecnomecanicaExpiry")),
+        vehicleTaxExpiry: dateInputToIsoString(form.get("vehicleTaxExpiry")),
+        pendingProcedures: emptyToUndefined(form.get("pendingProcedures")),
+        fines: emptyToUndefined(form.get("fines")),
+        observations: emptyToUndefined(form.get("observations")),
         currentStatus: emptyToUndefined(form.get("currentStatus")),
       }),
     });
@@ -2953,7 +2984,7 @@ function buildComplianceEntry(label, value) {
 }
 
 function formatHistoryValue(value) {
-  return value || "Sin dato";
+  return value || "No registrado";
 }
 
 function formatAdminHistoryChange(item) {
@@ -2998,6 +3029,15 @@ function dateInputToIsoString(value) {
   return new Date(`${normalized}T00:00:00.000Z`).toISOString();
 }
 
+function dateInputToNullableIsoString(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return null;
+  }
+
+  return new Date(`${normalized}T00:00:00.000Z`).toISOString();
+}
+
 function initialsForName(name) {
   return String(name)
     .split(" ")
@@ -3010,6 +3050,29 @@ function initialsForName(name) {
 function emptyToUndefined(value) {
   const normalized = String(value || "").trim();
   return normalized ? normalized : undefined;
+}
+
+function emptyToNull(value) {
+  const normalized = String(value || "").trim();
+  return normalized ? normalized : null;
+}
+
+function numberInputToNullableInteger(value) {
+  const normalized = String(value ?? "").trim();
+  return normalized ? Number(normalized) : null;
+}
+
+function formatPendingProceduresAndFines(pendingProcedures, fines) {
+  const entries = [
+    ["Tramites", pendingProcedures],
+    ["Multas", fines],
+  ].filter(([, value]) => String(value || "").trim());
+
+  if (!entries.length) {
+    return "No registrado";
+  }
+
+  return entries.map(([label, value]) => `${label}: ${String(value).trim()}`).join(" | ");
 }
 
 function canAccessFinance() {
