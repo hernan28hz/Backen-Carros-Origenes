@@ -31,6 +31,31 @@ function getTransporter() {
   return transporter;
 }
 
+function isSmtpAuthError(error) {
+  return error?.code === "EAUTH" || error?.responseCode === 535;
+}
+
+function toMailerApiError(error) {
+  if (error instanceof ApiError) {
+    return error;
+  }
+
+  if (isSmtpAuthError(error)) {
+    return new ApiError(503, "No se pudo autenticar el correo SMTP. Revisa SMTP_USER y SMTP_PASSWORD en el hosting");
+  }
+
+  return error;
+}
+
+async function sendMail(message) {
+  try {
+    const mailer = getTransporter();
+    await mailer.sendMail(message);
+  } catch (error) {
+    throw toMailerApiError(error);
+  }
+}
+
 function buildVerificationEmailHtml(code) {
   return `
     <!doctype html>
@@ -209,10 +234,9 @@ function buildBaseAttachments() {
 }
 
 async function sendVerificationCode(to, code) {
-  const mailer = getTransporter();
   const fromAddress = env.smtp.from || env.smtp.user;
 
-  await mailer.sendMail({
+  await sendMail({
     from: `"${APP_NAME}" <${fromAddress}>`,
     to,
     subject: `Codigo de verificacion - ${APP_NAME}`,
@@ -223,7 +247,6 @@ async function sendVerificationCode(to, code) {
 }
 
 async function sendComplianceAlert(to, alert) {
-  const mailer = getTransporter();
   const fromAddress = env.smtp.from || env.smtp.user;
   const attachments = buildBaseAttachments();
   const photoPath = alert.photoUrl ? path.resolve(__dirname, "../..", alert.photoUrl.replace(/^\//, "")) : "";
@@ -242,7 +265,7 @@ async function sendComplianceAlert(to, alert) {
     hasPhoto,
   };
 
-  await mailer.sendMail({
+  await sendMail({
     from: `"${APP_NAME}" <${fromAddress}>`,
     to,
     subject: `${alert.documentLabel} ${alert.status.toLowerCase()} - ${alert.plate}`,

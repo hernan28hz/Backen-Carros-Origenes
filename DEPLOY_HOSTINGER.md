@@ -56,6 +56,14 @@ SMTP_PASSWORD=TU_PASSWORD_DEL_CORREO
 
 Reemplaza solo `TU_PASSWORD` por la clave real del usuario MySQL.
 Reemplaza `TU_PASSWORD_DEL_CORREO` por la clave SMTP del correo configurado en Hostinger. Si `SMTP_PASSWORD` queda vacio o no existe, la app mostrara `El envio de correos no esta configurado` al pedir el codigo de verificacion.
+Si el log muestra `Invalid login: 535 5.7.8 authentication failed`, las variables SMTP existen pero Hostinger rechazo el usuario o la clave. Revisa en el panel de Hostinger:
+
+- `SMTP_USER` debe ser exactamente el buzon creado, por ejemplo `info@grupowlogist.com`.
+- `SMTP_FROM` debe ser el mismo correo o un alias autorizado del mismo dominio.
+- `SMTP_PASSWORD` debe ser la clave del buzon de correo, no la clave de MySQL, hPanel, FTP ni del usuario administrador de la app.
+- Si dudas de la clave, cambia/restablece la contrasena del buzon en Hostinger Email y copia esa nueva clave en las variables de entorno de la app Node.
+- Despues de cambiar variables SMTP, guarda los cambios y reinicia/redeploya la app Node para que tome los valores nuevos.
+
 En produccion, dentro de Hostinger, no uses `srv1665.hstgr.io` ni otro host remoto en `DATABASE_URL`.
 Usa `127.0.0.1`, porque la app Node y MySQL corren dentro del mismo hosting.
 
