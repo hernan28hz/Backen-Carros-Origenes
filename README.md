@@ -1,18 +1,61 @@
-# Backend Carros
+# GRUPO W LOGIST
 
-Backend Node.js + Express + Prisma para inventario de vehiculos, usuarios, fotos, finanzas, catalogo publico y alertas por correo.
+Aplicacion web para gestionar el inventario de vehiculos de la flota, usuarios internos, fotos, catalogo publico, estados operativos, finanzas y alertas de vencimientos.
 
-Prisma esta configurado con `engineType = "client"` y `@prisma/adapter-mariadb` para conectarse a MySQL sin cargar el motor Rust de Prisma en produccion.
+El proyecto usa Node.js, Express, Prisma y MySQL. Prisma esta configurado con `engineType = "client"` y `@prisma/adapter-mariadb` para conectarse a MySQL sin depender del motor Rust en produccion.
+
+## Funcionalidades actuales
+
+- Catalogo publico de vehiculos visibles con imagen, estado, marca, modelo y operador.
+- Panel privado por roles para administrar vehiculos, usuarios, finanzas y perfil.
+- Registro de vehiculos con placa, marca, modelo, anio, operador asignado, kilometraje, propietario, vencimientos, tramites, multas, VIN, observaciones, estado inicial e imagen.
+- Detalle de vehiculo con informacion en este orden: Marca, Modelo, Anio, Operador asignado, Kilometraje actual, Propietario, Vencimiento de SOAT, Vencimiento de tecnomecanica, Vencimiento del impuesto vehicular, Tramites pendientes o multas, VIN, Creado por y Observaciones.
+- Edicion de datos administrativos del vehiculo y actualizacion de estado.
+- Carga, visualizacion y eliminacion de fotos por vehiculo.
+- Historial de cambios administrativos y de estados.
+- Modulo financiero para ingresos por flete, alquiler, venta de vehiculo, gastos generales, compra de vehiculo y mantenimientos.
+- Perfil de usuario con correo de contacto y verificacion.
+- Alertas por correo para vencimientos de SOAT, tecnomecanica e impuesto vehicular.
+- Interfaz responsive para escritorio y dispositivos moviles.
+
+Cuando un dato del detalle de vehiculo no esta registrado, la interfaz muestra `No registrado`.
 
 ## Requisitos
 
 - Node.js `>=20.9.0`
-- MySQL en Hostinger
 - npm
+- Base de datos MySQL o MariaDB
+
+## Ejecutar en local
+
+Instala dependencias y genera el cliente Prisma:
+
+```bash
+npm install
+npx prisma generate
+```
+
+Ejecuta en modo desarrollo:
+
+```bash
+npm run dev
+```
+
+Luego abre:
+
+```text
+http://localhost:3000
+```
+
+Para ejecutar sin recarga automatica:
+
+```bash
+npm start
+```
 
 ## Variables de entorno
 
-En Hostinger produccion, `DATABASE_URL` debe usar `127.0.0.1`:
+Crea un archivo `.env` en la raiz del proyecto. Ejemplo para produccion en Hostinger:
 
 ```env
 DATABASE_URL="mysql://u122249446_HernanH:TU_PASSWORD@127.0.0.1:3306/u122249446_bdCarros17"
@@ -44,7 +87,35 @@ IMAGE_CACHE_MEMORY_MB=16
 UPLOAD_IMAGE_MAX_MB=5
 ```
 
-Reemplaza solo `TU_PASSWORD`, `TU_PASSWORD_ADMIN`, `TU_PASSWORD_SMTP` y `JWT_SECRET`. No uses `srv1665.hstgr.io` en produccion; ese host es solo para conectarte desde fuera de Hostinger.
+Para conectarte desde fuera de Hostinger, usa el host remoto que corresponda en `DATABASE_URL`. En produccion dentro de Hostinger debe usarse `127.0.0.1`.
+
+## Base de datos
+
+El esquema vive en `prisma/schema.prisma` y las migraciones en `prisma/migrations/`.
+
+Comandos utiles:
+
+```bash
+npx prisma generate
+npm run prisma:deploy
+npm run seed:admin
+```
+
+En una base nueva, ejecuta `npm run prisma:deploy` antes de crear el admin. En una base de produccion existente, evita `prisma db push` y `prisma migrate dev`.
+
+## Estructura principal
+
+- `src/app.js`: configuracion de Express, rutas API y fallback de la app web.
+- `src/server.js`: arranque del servidor.
+- `src/modules/vehicles/`: API de vehiculos, validaciones y rutas.
+- `src/modules/status/`: cambios de estado de vehiculos.
+- `src/modules/photos/`: carga y eliminacion de fotos.
+- `src/modules/finance/`: movimientos financieros.
+- `src/modules/users/`: usuarios y perfil.
+- `src/modules/catalog/`: catalogo publico.
+- `public/`: interfaz web servida por Express.
+- `uploads/vehicles/`: fotos cargadas por los usuarios.
+- `uploads/.cache/`: cache de imagenes procesadas.
 
 ## Subir a Hostinger
 
@@ -66,23 +137,10 @@ No subas:
 - `uploads/vehicles/`
 - `uploads/.cache/`
 
-## Instalacion
-
-```bash
-npm install
-npx prisma generate
-npm start
-```
-
-En Hostinger, Passenger arranca directamente `src/server.js` segun el `.htaccess`, por lo que `npm start` solo es necesario para ejecucion manual o local.
-
-En una base nueva, ejecuta `npm run prisma:deploy` antes de crear el admin. En una base de produccion existente, no ejecutes `prisma db push` ni `prisma migrate dev`.
-
-## Notas clave
+## Notas de produccion
 
 - Hostinger usa Passenger/`lsnode` y `PassengerStartupFile src/server.js`.
-- La base sigue siendo MySQL; el adapter `mariadb` es compatible con MySQL.
-- No se necesita `TOKIO_WORKER_THREADS`; esa variable solo aplicaba a la mitigacion con motor Rust.
 - Las fotos subidas se guardan en `uploads/vehicles/`.
 - El cache de imagenes se genera en `uploads/.cache/`.
 - Los correos de vencimiento quedan activos con `COMPLIANCE_NOTIFICATIONS_ENABLED=true`.
+- `COMPLIANCE_RUN_ON_STARTUP=false` evita disparar alertas apenas inicia el servidor.

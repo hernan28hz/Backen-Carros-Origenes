@@ -20,6 +20,12 @@ Variables necesarias:
 - `ADMIN_NAME`
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_SECURE`
+- `SMTP_USER`
+- `SMTP_FROM`
+- `SMTP_PASSWORD`
 
 Ejemplo obligatorio si la app Node y MySQL estan en el mismo hosting de Hostinger:
 ```env
@@ -40,9 +46,16 @@ HTTP_LOGS=false
 IMAGE_PROCESSING_CONCURRENCY=1
 IMAGE_CACHE_MEMORY_MB=16
 UPLOAD_IMAGE_MAX_MB=5
+SMTP_HOST=smtp.hostinger.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=info@grupowlogist.com
+SMTP_FROM=info@grupowlogist.com
+SMTP_PASSWORD=TU_PASSWORD_DEL_CORREO
 ```
 
 Reemplaza solo `TU_PASSWORD` por la clave real del usuario MySQL.
+Reemplaza `TU_PASSWORD_DEL_CORREO` por la clave SMTP del correo configurado en Hostinger. Si `SMTP_PASSWORD` queda vacio o no existe, la app mostrara `El envio de correos no esta configurado` al pedir el codigo de verificacion.
 En produccion, dentro de Hostinger, no uses `srv1665.hstgr.io` ni otro host remoto en `DATABASE_URL`.
 Usa `127.0.0.1`, porque la app Node y MySQL corren dentro del mismo hosting.
 
@@ -70,6 +83,7 @@ Variables utiles:
 - `UPLOAD_IMAGE_MAX_MB=5`: rechaza fotos demasiado pesadas antes de procesarlas.
 - `VEHICLE_DETAIL_HISTORY_LIMIT=25`: limita historial cargado por detalle de vehiculo.
 - `VEHICLE_DETAIL_PHOTO_LIMIT=12`: limita fotos cargadas por detalle de vehiculo.
+- `SMTP_PASSWORD`: clave SMTP del correo remitente. Es obligatoria para enviar codigos de verificacion y alertas de vencimientos.
 
 ## Subir el proyecto
 
