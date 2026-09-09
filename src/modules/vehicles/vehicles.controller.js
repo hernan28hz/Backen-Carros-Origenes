@@ -17,6 +17,7 @@ const ADMIN_DETAIL_FIELDS = {
   pendingProcedures: "Tramites pendientes",
   fines: "Multas",
   currentMileage: "Kilometraje actual",
+  purchaseValue: "Valor de compra",
 };
 
 const VEHICLE_DETAIL_HISTORY_LIMIT = Number(process.env.VEHICLE_DETAIL_HISTORY_LIMIT || 25);
@@ -30,6 +31,7 @@ const vehicleListSelect = {
   year: true,
   currentStatus: true,
   currentMileage: true,
+  purchaseValue: true,
   assignedOperator: true,
   createdAt: true,
   updatedAt: true,
@@ -85,7 +87,7 @@ function normalizeDetailValue(field, value) {
     return normalizeNullableDate(value);
   }
 
-  if (field === "currentMileage") {
+  if (field === "currentMileage" || field === "purchaseValue") {
     if (value === null || value === undefined || value === "") {
       return null;
     }
@@ -123,6 +125,10 @@ function serializeHistoryValue(field, value) {
     return value.toISOString().slice(0, 10);
   }
 
+  if (field === "purchaseValue") {
+    return String(Number(value));
+  }
+
   return String(value);
 }
 
@@ -135,6 +141,7 @@ const createVehicle = asyncHandler(async (req, res) => {
     assignedOperator,
     year,
     currentMileage,
+    purchaseValue,
     currentStatus,
     owner,
     observations,
@@ -156,6 +163,7 @@ const createVehicle = asyncHandler(async (req, res) => {
         assignedOperator: assignedOperator?.trim() || null,
         year,
         currentMileage,
+        purchaseValue: purchaseValue ?? null,
         owner: owner?.trim() || null,
         observations: observations?.trim() || null,
         soatExpiry: normalizeNullableDate(soatExpiry),
@@ -228,6 +236,7 @@ const updateVehicleDetails = asyncHandler(async (req, res) => {
     year,
     assignedOperator,
     currentMileage,
+    purchaseValue,
     owner,
     observations,
     soatExpiry,
@@ -248,6 +257,7 @@ const updateVehicleDetails = asyncHandler(async (req, res) => {
       vin: true,
       assignedOperator: true,
       currentMileage: true,
+      purchaseValue: true,
       owner: true,
       observations: true,
       soatExpiry: true,
@@ -269,6 +279,7 @@ const updateVehicleDetails = asyncHandler(async (req, res) => {
     vin,
     assignedOperator,
     currentMileage,
+    purchaseValue,
     owner,
     observations,
     soatExpiry,

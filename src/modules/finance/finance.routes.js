@@ -2,7 +2,7 @@ const { Router } = require("express");
 const authMiddleware = require("../../middlewares/auth.middleware");
 const validate = require("../../middlewares/validate.middleware");
 const ApiError = require("../../utils/apiError");
-const { canManageFinance } = require("../../utils/permissions");
+const { canManageFinance, canViewFinanceBalance } = require("../../utils/permissions");
 const upload = require("./finance.upload");
 const { normalizeFinanceBody } = require("./finance.normalize");
 const {
@@ -13,6 +13,7 @@ const {
 const {
   listFinanceRecords,
   getFinanceSummary,
+  getFinanceBalance,
   createFinanceRecord,
   updateFinanceRecord,
   deleteFinanceRecord,
@@ -27,6 +28,18 @@ const requireFinanceAccess = (req, _res, next) => {
 
   return next();
 };
+
+const requireFinanceBalanceAccess = (req, _res, next) => {
+  if (!canViewFinanceBalance(req.user)) {
+    return next(new ApiError(403, "No tienes permisos para ver el balance financiero"));
+  }
+
+  return next();
+};
+
+// Solo lectura: accesible tambien para el DIRECTOR. Se declara antes del guard
+// de gestion para no exigir permisos de escritura.
+router.get("/balance", authMiddleware, requireFinanceBalanceAccess, getFinanceBalance);
 
 router.use(authMiddleware, requireFinanceAccess);
 router.get("/", listFinanceRecords);

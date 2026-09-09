@@ -24,10 +24,17 @@ function canManageFinance(user) {
   return user?.role === ROLES.GERENTE || isPrimaryAdmin(user);
 }
 
+// El balance financiero es solo lectura: lo ve el DIRECTOR ademas de quienes ya
+// gestionan finanzas (GERENTE y admin primario).
+function canViewFinanceBalance(user) {
+  return user?.role === ROLES.DIRECTOR || canManageFinance(user);
+}
+
 module.exports = {
   ROLES,
   FINANCE_RECORD_TYPES,
   VEHICLE_READ_ROLES,
   VEHICLE_WRITE_ROLES,
   canManageFinance,
+  canViewFinanceBalance,
 };

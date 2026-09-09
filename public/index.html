@@ -42,7 +42,7 @@
       imagesrcset="/media/membreteW-360.webp 360w, /media/membreteW-640.webp 640w"
       imagesizes="(max-width: 768px) 142px, 190px"
     />
-    <link rel="stylesheet" href="/styles.css?v=2.0" />
+    <link rel="stylesheet" href="/styles.css?v=2.8" />
   </head>
   <body>
     <div id="pullToRefreshIndicator" class="pull-refresh-indicator" aria-live="polite">
@@ -362,6 +362,79 @@
             </div>
           </section>
 
+          <section id="balancePage" class="route-page hidden">
+            <div class="section-header balance-no-print">
+              <div>
+                <p class="section-kicker">Balance</p>
+                <h3>Balance financiero de la operacion</h3>
+              </div>
+            </div>
+
+            <div id="balancePrintArea" class="balance-print-area">
+              <div class="balance-print-only balance-report-head">
+                <h2>Balance financiero - GRUPO W LOGIST</h2>
+                <p id="balanceReportMeta"></p>
+              </div>
+
+              <div id="balanceAssetsCard"></div>
+
+              <div id="balanceSummary" class="summary-row"></div>
+
+              <article class="card balance-table-card">
+                <div class="section-header">
+                  <div>
+                    <p class="section-kicker">Planilla</p>
+                    <h3>Movimientos financieros</h3>
+                  </div>
+                  <div class="toolbar balance-no-print">
+                    <button id="refreshBalanceButton" class="button button-secondary" type="button">Actualizar</button>
+                    <button id="printBalanceButton" class="button button-primary" type="button">Imprimir</button>
+                  </div>
+                </div>
+                <div class="balance-table-wrap">
+                  <table class="balance-table">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Concepto</th>
+                        <th>Vehiculo</th>
+                        <th>Cliente</th>
+                        <th>Clase</th>
+                        <th class="balance-amount-col">Monto</th>
+                      </tr>
+                    </thead>
+                    <tbody id="balanceTableBody"></tbody>
+                    <tfoot id="balanceTableFoot"></tfoot>
+                  </table>
+                </div>
+              </article>
+            </div>
+
+            <article class="card balance-vehicles-card">
+              <div class="section-header balance-no-print">
+                <div>
+                  <p class="section-kicker">Consulta individual</p>
+                  <h3>Resumen financiero de un vehiculo</h3>
+                </div>
+                <button id="printVehicleFinanceButton" class="button button-primary" type="button">Imprimir</button>
+              </div>
+
+              <label class="balance-vehicle-picker balance-no-print">
+                <span>Selecciona o busca un vehiculo</span>
+                <select id="vehicleFinanceSelect">
+                  <option value="">Selecciona un vehiculo...</option>
+                </select>
+              </label>
+
+              <div id="vehicleFinancePrintArea" class="balance-print-area">
+                <div id="vehicleFinanceContent" class="balance-muted">
+                  Selecciona un vehiculo para ver su historial financiero.
+                </div>
+              </div>
+            </article>
+          </section>
+
           <section id="profilePage" class="route-page hidden">
             <article class="card">
               <div class="section-header">
@@ -421,6 +494,10 @@
                   <label>
                     <span>Kilometraje actual</span>
                     <input name="currentMileage" type="number" min="0" step="1" inputmode="numeric" placeholder="Ej: 125000" required />
+                  </label>
+                  <label>
+                    <span>Valor de compra / avaluo</span>
+                    <input name="purchaseValue" type="number" min="0" step="1" inputmode="numeric" placeholder="Ej: 85000000" />
                   </label>
                   <label>
                     <span>Propietario</span>
@@ -548,6 +625,6 @@
       </article>
     </template>
 
-    <script src="/app.js?v=2.5" defer></script>
+    <script src="/app.js?v=2.12" defer></script>
   </body>
   </html>

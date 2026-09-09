@@ -1890,3 +1890,818 @@ textarea {
     font-size: 11px;
   }
 }
+
+/* ===== Balance financiero (rol DIRECTOR) ===== */
+#balancePage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+#balancePage .stat-card small {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* Tarjeta destacada de patrimonio con efecto vidrio esmerilado */
+.balance-assets-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  min-height: 148px;
+  padding: 22px 26px;
+  border-radius: 22px;
+  color: #0f2b46;
+  background: linear-gradient(135deg, rgba(96, 158, 255, 0.22), rgba(255, 255, 255, 0.06));
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+}
+
+.balance-assets-card::before {
+  content: "";
+  position: absolute;
+  inset: -55% -15% auto auto;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle at 32% 32%, rgba(88, 161, 255, 0.5), transparent 70%);
+  filter: blur(26px);
+  z-index: -1;
+}
+
+.balance-assets-car {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 82%;
+  width: auto;
+  opacity: 0.95;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.balance-assets-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 60%;
+}
+
+.balance-assets-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: rgba(15, 43, 70, 0.72);
+}
+
+.balance-assets-value {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.05;
+  color: #0f2b46;
+}
+
+.balance-assets-content small {
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(15, 43, 70, 0.6);
+}
+
+
+.balance-print-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.balance-print-only {
+  display: none;
+}
+
+.balance-report-head h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.balance-report-head p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.balance-negative {
+  background: #fdecec;
+  border-color: #f3c6c6;
+}
+
+.balance-vehicle-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 420px;
+  margin-top: var(--space-3);
+}
+
+.balance-vehicle-picker span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vehicle-finance-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.vehicle-finance-head {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.vehicle-finance-head div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+}
+
+.vehicle-finance-head span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.vehicle-finance-head strong {
+  font-size: 14px;
+}
+
+.balance-muted {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.balance-table-wrap {
+  margin-top: var(--space-3);
+  overflow-x: auto;
+}
+
+.balance-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.balance-table th,
+.balance-table td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.balance-table thead th {
+  background: var(--bg-muted, #f2f5f8);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.balance-table .balance-amount-col {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.balance-table tbody tr:nth-child(even) {
+  background: rgba(15, 43, 70, 0.03);
+}
+
+.balance-empty {
+  text-align: center !important;
+  color: var(--text-secondary);
+  padding: 18px !important;
+}
+
+.balance-class {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.balance-class.is-income {
+  background: #effaf3;
+  color: #1f7a45;
+}
+
+.balance-class.is-expense {
+  background: #fff7eb;
+  color: #9a6212;
+}
+
+.balance-table tfoot th {
+  text-align: right;
+  background: var(--bg-muted, #f2f5f8);
+}
+
+.balance-total-row td,
+.balance-total-row th {
+  font-weight: 700;
+}
+
+.balance-total-diff td,
+.balance-total-diff th {
+  font-size: 14px;
+}
+
+/* ===== Balance: responsive para moviles y pantallas pequenas ===== */
+@media (max-width: 768px) {
+  #balancePage {
+    gap: var(--space-3);
+  }
+
+  .balance-print-area {
+    gap: var(--space-3);
+  }
+
+  .balance-assets-card {
+    min-height: 0;
+    padding: 18px;
+  }
+
+  .balance-assets-content {
+    max-width: 60%;
+  }
+
+  .balance-assets-label {
+    font-size: 12px;
+  }
+
+  .balance-assets-value {
+    font-size: 24px;
+    word-break: break-word;
+  }
+
+  .balance-assets-car {
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: auto;
+    width: 32%;
+    max-width: 148px;
+    opacity: 0.9;
+  }
+
+  .balance-vehicle-picker {
+    max-width: 100%;
+  }
+
+  .vehicle-finance-head {
+    grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    gap: var(--space-2);
+  }
+
+  /* Planilla: de tabla a tarjetas apiladas */
+  .balance-table-wrap {
+    overflow-x: visible;
+    margin-top: var(--space-2);
+  }
+
+  .balance-table,
+  .balance-table tbody,
+  .balance-table tfoot,
+  .balance-table tr,
+  .balance-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .balance-table thead {
+    display: none;
+  }
+
+  .balance-table tbody tr {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card) !important;
+    padding: 4px 12px;
+    margin-bottom: 10px;
+  }
+
+  .balance-table tbody td {
+    border: none;
+    border-bottom: 1px dashed var(--border);
+    padding: 8px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 14px;
+    text-align: right;
+    white-space: normal;
+  }
+
+  .balance-table tbody td:last-child {
+    border-bottom: none;
+  }
+
+  .balance-table tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  .balance-table td.balance-empty {
+    display: block;
+    text-align: center !important;
+  }
+
+  .balance-table td.balance-empty::before {
+    content: none;
+  }
+
+  .balance-table .balance-amount-col {
+    white-space: normal;
+  }
+
+  .balance-table tfoot tr {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 14px;
+    border: none;
+    border-top: 1px solid var(--border);
+    padding: 8px 2px 0;
+  }
+
+  .balance-table tfoot tr + tr {
+    border-top: none;
+    padding-top: 2px;
+  }
+
+  .balance-table tfoot th,
+  .balance-table tfoot td {
+    display: block;
+    border: none;
+    background: transparent;
+    padding: 0;
+    text-align: right;
+    white-space: normal;
+  }
+
+  .balance-table tfoot th {
+    text-align: left;
+  }
+}
+
+@media (max-width: 420px) {
+  .balance-assets-card {
+    padding: 16px 16px 58px;
+  }
+
+  .balance-assets-content {
+    max-width: 100%;
+  }
+
+  .balance-assets-car {
+    top: auto;
+    bottom: 10px;
+    right: 12px;
+    transform: none;
+    width: 96px;
+    max-width: 40%;
+    opacity: 0.8;
+  }
+}
+
+@media print {
+  @page {
+    margin: 12mm 10mm;
+  }
+
+  body.printing-balance,
+  body.printing-vehicle {
+    background: #fff !important;
+  }
+
+  /* --- Ocultar todo lo que no es el reporte --- */
+  body.printing-balance #pullToRefreshIndicator,
+  body.printing-balance #mobileSidebarButton,
+  body.printing-balance #mobileSidebarBackdrop,
+  body.printing-balance #sidebar,
+  body.printing-balance .app-topbar,
+  body.printing-balance #toastContainer,
+  body.printing-balance .balance-no-print,
+  body.printing-vehicle #pullToRefreshIndicator,
+  body.printing-vehicle #mobileSidebarButton,
+  body.printing-vehicle #mobileSidebarBackdrop,
+  body.printing-vehicle #sidebar,
+  body.printing-vehicle .app-topbar,
+  body.printing-vehicle #toastContainer,
+  body.printing-vehicle .balance-no-print {
+    display: none !important;
+  }
+
+  body.printing-balance .app-main > .route-page:not(#balancePage),
+  body.printing-vehicle .app-main > .route-page:not(#balancePage) {
+    display: none !important;
+  }
+
+  /* Modo balance general: sin la tarjeta de consulta por vehiculo */
+  body.printing-balance .balance-vehicles-card {
+    display: none !important;
+  }
+
+  /* Modo vehiculo: sin el balance general */
+  body.printing-vehicle #balancePrintArea {
+    display: none !important;
+  }
+
+  /* --- Contenedores en flujo normal para que pagine bien --- */
+  body.printing-balance .app-shell,
+  body.printing-balance .app-content,
+  body.printing-balance .app-main,
+  body.printing-balance #balancePage,
+  body.printing-balance .balance-print-area,
+  body.printing-balance .balance-vehicles-card,
+  body.printing-vehicle .app-shell,
+  body.printing-vehicle .app-content,
+  body.printing-vehicle .app-main,
+  body.printing-vehicle #balancePage,
+  body.printing-vehicle .balance-print-area,
+  body.printing-vehicle .balance-vehicles-card {
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+  }
+
+  body.printing-balance #balancePage,
+  body.printing-vehicle #balancePage {
+    color: #000 !important;
+    font-size: 10pt;
+  }
+
+  body.printing-balance .balance-print-only,
+  body.printing-vehicle .balance-print-only {
+    display: block !important;
+  }
+
+  /* --- Encabezado del reporte --- */
+  body.printing-balance .balance-report-head,
+  body.printing-vehicle .balance-report-head {
+    margin: 0 0 8px !important;
+    padding: 0 0 5px !important;
+    border-bottom: 2px solid #000 !important;
+    break-after: avoid;
+  }
+  body.printing-balance .balance-report-head h2,
+  body.printing-vehicle .balance-report-head h2 {
+    margin: 0 0 2px !important;
+    font-size: 14pt !important;
+  }
+  body.printing-balance .balance-report-head p,
+  body.printing-vehicle .balance-report-head p {
+    margin: 0 !important;
+    font-size: 8pt !important;
+    color: #333 !important;
+  }
+
+  /* --- Tarjeta de patrimonio: plana y sin partir --- */
+  body.printing-balance .balance-assets-card {
+    display: block !important;
+    border: 1px solid #000 !important;
+    border-radius: 2px !important;
+    padding: 6px 10px !important;
+    margin: 0 0 8px !important;
+    color: #000 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    break-inside: avoid;
+  }
+  body.printing-balance .balance-assets-card::before,
+  body.printing-balance .balance-assets-car {
+    display: none !important;
+  }
+  body.printing-balance .balance-assets-content {
+    max-width: 100% !important;
+  }
+  body.printing-balance .balance-assets-label {
+    font-size: 8pt !important;
+    color: #333 !important;
+  }
+  body.printing-balance .balance-assets-value {
+    font-size: 13pt !important;
+    color: #000 !important;
+  }
+  body.printing-balance .balance-assets-content small {
+    display: none !important;
+  }
+
+  /* --- Tira de totales: una sola fila compacta, no se parte --- */
+  body.printing-balance .summary-row,
+  body.printing-vehicle .summary-row {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 5px !important;
+    margin: 0 0 8px !important;
+    break-inside: avoid;
+  }
+  body.printing-balance .stat-card,
+  body.printing-vehicle .stat-card {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    padding: 4px 7px !important;
+    border: 1px solid #999 !important;
+    border-radius: 2px !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+  body.printing-balance .stat-card span,
+  body.printing-vehicle .stat-card span {
+    font-size: 7pt !important;
+  }
+  body.printing-balance .stat-card strong,
+  body.printing-vehicle .stat-card strong {
+    margin-top: 1px !important;
+    font-size: 10pt !important;
+  }
+  body.printing-balance .stat-card small,
+  body.printing-vehicle .stat-card small {
+    display: none !important;
+  }
+
+  /* --- Datos del vehiculo (modo vehiculo) --- */
+  body.printing-vehicle .vehicle-finance-body {
+    margin: 0 !important;
+  }
+  body.printing-vehicle .vehicle-finance-head {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 5px !important;
+    margin: 0 0 8px !important;
+    break-inside: avoid;
+  }
+  body.printing-vehicle .vehicle-finance-head div {
+    border: 1px solid #999 !important;
+    padding: 3px 7px !important;
+    background: #fff !important;
+  }
+  body.printing-vehicle .vehicle-finance-head strong {
+    font-size: 9pt !important;
+  }
+
+  /* --- LA PLANILLA: tabla real, ancho completo, cabeceras repetidas --- */
+  body.printing-balance .card,
+  body.printing-vehicle .card {
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 0 6px !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+  body.printing-balance .balance-table-card .section-header,
+  body.printing-vehicle .balance-table-card .section-header {
+    display: block !important;
+    margin-bottom: 4px !important;
+  }
+  body.printing-balance .balance-table-card .section-kicker,
+  body.printing-vehicle .balance-table-card .section-kicker {
+    display: none !important;
+  }
+  body.printing-balance .balance-table-card h3,
+  body.printing-vehicle .balance-table-card h3 {
+    font-size: 10pt !important;
+    margin: 0 !important;
+  }
+
+  body.printing-balance .balance-table-wrap,
+  body.printing-vehicle .balance-table-wrap {
+    display: block !important;
+    overflow: visible !important;
+    margin: 0 !important;
+  }
+
+  body.printing-balance .balance-table,
+  body.printing-vehicle .balance-table {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+    font-size: 8pt !important;
+  }
+  body.printing-balance .balance-table thead,
+  body.printing-vehicle .balance-table thead {
+    display: table-header-group !important;
+  }
+  body.printing-balance .balance-table tbody,
+  body.printing-vehicle .balance-table tbody {
+    display: table-row-group !important;
+  }
+  /* tfoot como grupo normal: los totales salen una sola vez al final */
+  body.printing-balance .balance-table tfoot,
+  body.printing-vehicle .balance-table tfoot {
+    display: table-row-group !important;
+    break-inside: avoid;
+  }
+  body.printing-balance .balance-table tr,
+  body.printing-vehicle .balance-table tr {
+    display: table-row !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  body.printing-balance .balance-table th,
+  body.printing-balance .balance-table td,
+  body.printing-vehicle .balance-table th,
+  body.printing-vehicle .balance-table td {
+    display: table-cell !important;
+    border: 1px solid #444 !important;
+    padding: 3px 5px !important;
+    text-align: left !important;
+    vertical-align: top !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+  body.printing-balance .balance-table td::before,
+  body.printing-vehicle .balance-table td::before {
+    content: none !important;
+  }
+  body.printing-balance .balance-table thead th,
+  body.printing-balance .balance-table tfoot th,
+  body.printing-vehicle .balance-table thead th,
+  body.printing-vehicle .balance-table tfoot th {
+    background: #e6e6e6 !important;
+    font-weight: 700 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.printing-balance .balance-table tfoot th,
+  body.printing-vehicle .balance-table tfoot th {
+    text-align: right !important;
+  }
+  body.printing-balance .balance-table tbody tr:nth-child(even),
+  body.printing-vehicle .balance-table tbody tr:nth-child(even) {
+    background: #f2f2f2 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.printing-balance .balance-table .balance-amount-col,
+  body.printing-vehicle .balance-table .balance-amount-col {
+    text-align: right !important;
+    white-space: nowrap !important;
+  }
+  body.printing-balance .balance-class,
+  body.printing-vehicle .balance-class {
+    padding: 0 !important;
+    background: transparent !important;
+    color: #000 !important;
+    font-weight: 600 !important;
+  }
+
+  /* Anchos de columna para aprovechar el ancho de la hoja */
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(1) { width: 10%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(2) { width: 12%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(3) { width: 25%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(4) { width: 21%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(5) { width: 14%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(6) { width: 8%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(7) { width: 10%; }
+
+  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(1) { width: 12%; }
+  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(2) { width: 16%; }
+  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(3) { width: 34%; }
+  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(4) { width: 18%; }
+  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(5) { width: 10%; }
+  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(6) { width: 10%; }
+}
+
+/* ===== Vale de flete (impresion desde el mini resumen de Finanzas) ===== */
+#fletePrintArea {
+  display: none;
+}
+
+@media print {
+  body.printing-flete {
+    background: #fff !important;
+  }
+
+  body.printing-flete > *:not(#fletePrintArea) {
+    display: none !important;
+  }
+
+  body.printing-flete #fletePrintArea {
+    display: block !important;
+    color: #000;
+  }
+
+  .flete-vale {
+    max-width: 150mm;
+    margin: 0 auto;
+    font-size: 10pt;
+    color: #000;
+  }
+
+  .flete-vale-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+  }
+
+  .flete-vale-head strong {
+    display: block;
+    font-size: 14pt;
+    letter-spacing: 0.02em;
+  }
+
+  .flete-vale-head span {
+    font-size: 8pt;
+    color: #333;
+  }
+
+  .flete-vale-ref {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .flete-vale-ref span {
+    display: block;
+    font-size: 8pt;
+    color: #333;
+  }
+
+  .flete-vale-data {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+  }
+
+  .flete-vale-data th,
+  .flete-vale-data td {
+    border: 1px solid #444;
+    padding: 5px 8px;
+    text-align: left;
+    vertical-align: top;
+    font-size: 9pt;
+    word-break: break-word;
+  }
+
+  .flete-vale-data th {
+    width: 42%;
+    background: #ececec;
+    font-weight: 700;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .flete-vale-legend {
+    margin: 0 0 30px;
+    padding: 9px;
+    text-align: center;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    border: 1px dashed #000;
+  }
+
+  .flete-vale-sign {
+    width: 62%;
+    margin-top: 38px;
+  }
+
+  .flete-vale-sign-line {
+    height: 36px;
+    border-bottom: 1px solid #000;
+  }
+
+  .flete-vale-sign span {
+    font-size: 9pt;
+    color: #333;
+  }
+}

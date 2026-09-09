@@ -26,6 +26,8 @@ function normalizeBoolean(value) {
   return value === true || value === "true";
 }
 
+const INCOME_TYPES = ["INGRESO", "FLETE", "ALQUILER", "VENTA_VEHICULO"];
+
 function financeAmountForSummary(record) {
   const amount = Number(record.amount || 0);
   if (record.type === "FLETE") {
@@ -94,6 +96,17 @@ async function markVehicleAsSold(tx, vehicleId, userId) {
   });
 }
 
+// Al registrar la compra de un vehiculo, su valor de compra pasa a ser el
+// avaluo patrimonial del vehiculo (alimenta "Total de activos" sin doble conteo).
+async function syncVehiclePurchaseValueFromPurchase(tx, record) {
+  if (record.type !== "COMPRA_VEHICULO" || !record.vehicleId) return;
+
+  await tx.vehicle.update({
+    where: { id: record.vehicleId },
+    data: { purchaseValue: record.amount },
+  });
+}
+
 function serializeDecimal(value) {
   return value === null || value === undefined ? null : Number(value);
 }
@@ -148,7 +161,7 @@ const getFinanceSummary = asyncHandler(async (_req, res) => {
     (accumulator, record) => {
       const amount = financeAmountForSummary(record);
       accumulator.byType[record.type] = (accumulator.byType[record.type] || 0) + amount;
-      if (["INGRESO", "FLETE", "ALQUILER", "VENTA_VEHICULO"].includes(record.type)) {
+      if (INCOME_TYPES.includes(record.type)) {
         accumulator.income += amount;
       } else {
         accumulator.expenses += amount;
@@ -160,6 +173,77 @@ const getFinanceSummary = asyncHandler(async (_req, res) => {
   );
 
   return res.json(summary);
+});
+
+// Vista de solo lectura para el DIRECTOR: patrimonio neto historico, totales,
+// planilla completa de movimientos y resumen de la flota por estado.
+const getFinanceBalance = asyncHandler(async (_req, res) => {
+  const [records, vehicles] = await Promise.all([
+    prisma.financeRecord.findMany({
+      orderBy: { date: "desc" },
+      include: financeInclude,
+    }),
+    prisma.vehicle.findMany({
+      orderBy: { plate: "asc" },
+      select: {
+        id: true,
+        plate: true,
+        brand: true,
+        model: true,
+        year: true,
+        currentStatus: true,
+        purchaseValue: true,
+      },
+    }),
+  ]);
+
+  const serializedRecords = records.map(serializeFinanceRecord);
+  const serializedVehicles = vehicles.map((vehicle) => ({
+    ...vehicle,
+    purchaseValue: vehicle.purchaseValue === null ? null : Number(vehicle.purchaseValue),
+  }));
+
+  // Total de activos = suma del valor de compra de los vehiculos que siguen
+  // siendo patrimonio de la empresa (se excluyen los vendidos).
+  const assetsValue = serializedVehicles.reduce((total, vehicle) => {
+    if (vehicle.currentStatus === "SOLD") return total;
+    return total + Number(vehicle.purchaseValue || 0);
+  }, 0);
+
+  const totals = serializedRecords.reduce(
+    (accumulator, record) => {
+      const amount = financeAmountForSummary(record);
+      accumulator.byType[record.type] = (accumulator.byType[record.type] || 0) + amount;
+      if (INCOME_TYPES.includes(record.type)) {
+        accumulator.income += amount;
+      } else {
+        accumulator.expenses += amount;
+      }
+      return accumulator;
+    },
+    { income: 0, expenses: 0, byType: {} }
+  );
+  totals.difference = totals.income - totals.expenses;
+
+  const vehiclesByStatus = serializedVehicles.reduce((accumulator, vehicle) => {
+    accumulator[vehicle.currentStatus] = (accumulator[vehicle.currentStatus] || 0) + 1;
+    return accumulator;
+  }, {});
+
+  return res.json({
+    assetsValue,
+    netWorth: totals.difference,
+    income: totals.income,
+    expenses: totals.expenses,
+    difference: totals.difference,
+    byType: totals.byType,
+    records: serializedRecords,
+    vehicles: {
+      total: serializedVehicles.length,
+      byStatus: vehiclesByStatus,
+      list: serializedVehicles,
+    },
+  });
 });
 
 const createFinanceRecord = asyncHandler(async (req, res) => {
@@ -189,6 +273,8 @@ const createFinanceRecord = asyncHandler(async (req, res) => {
     if (created.type === "VENTA_VEHICULO" && created.vehicleId && normalizeBoolean(req.body.confirmVehicleSold)) {
       await markVehicleAsSold(tx, created.vehicleId, req.user.id);
     }
+
+    await syncVehiclePurchaseValueFromPurchase(tx, created);
 
     await createAuditLog(
       {
@@ -242,6 +328,8 @@ const updateFinanceRecord = asyncHandler(async (req, res) => {
       await markVehicleAsSold(tx, updated.vehicleId, req.user.id);
     }
 
+    await syncVehiclePurchaseValueFromPurchase(tx, updated);
+
     await createAuditLog(
       {
         userId: req.user.id,
@@ -293,6 +381,7 @@ const deleteFinanceRecord = asyncHandler(async (req, res) => {
 module.exports = {
   listFinanceRecords,
   getFinanceSummary,
+  getFinanceBalance,
   createFinanceRecord,
   updateFinanceRecord,
   deleteFinanceRecord,

@@ -142,6 +142,7 @@ model Vehicle {
   year          Int
   currentStatus VehicleStatusType      @default(AVAILABLE)
   currentMileage Int?
+  purchaseValue Decimal?               @db.Decimal(14, 2)
   owner         String?
   assignedOperator String?
   observations  String?

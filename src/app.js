@@ -107,6 +107,7 @@ app.get(
     "/admin/operadores",
     "/admin/mensajes",
     "/finanzas",
+    "/balance",
     "/vehiculo/:id/editar",
   ],
   (_req, res) => {

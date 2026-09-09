@@ -138,6 +138,9 @@ const SIDEBAR_ICONS = {
   finance: iconSvg(
     '<path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/>'
   ),
+  balance: iconSvg(
+    '<path d="M12 3v18"/><path d="M7 21h10"/><path d="M5 7h14l-2-4H7L5 7Z"/><path d="M5 7 2 13a3 3 0 0 0 6 0L5 7Z"/><path d="M19 7l-3 6a3 3 0 0 0 6 0l-3-6Z"/>'
+  ),
   logout: iconSvg(
     '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'
   ),
@@ -151,6 +154,7 @@ const SIDEBAR_LINKS = {
   ],
   DIRECTOR: [
     { route: "/catalogo", label: "Catalogo", icon: SIDEBAR_ICONS.catalog, matches: ["catalog"] },
+    { route: "/balance", label: "Balance", icon: SIDEBAR_ICONS.balance, matches: ["balance"] },
     { route: "/admin/operadores", label: "Usuarios", icon: SIDEBAR_ICONS.operators, matches: ["adminOperators"] },
     { route: "/perfil", label: "Perfil", icon: SIDEBAR_ICONS.profile, matches: ["profile"] },
   ],
@@ -164,6 +168,7 @@ const SIDEBAR_LINKS = {
     { route: "/catalogo", label: "Catalogo", icon: SIDEBAR_ICONS.catalog, matches: ["catalog"] },
     { route: "/dashboard", label: "Panel", icon: SIDEBAR_ICONS.dashboard, matches: ["dashboard"] },
     { route: "/finanzas", label: "Finanzas", icon: SIDEBAR_ICONS.finance, matches: ["finance"] },
+    { route: "/balance", label: "Balance", icon: SIDEBAR_ICONS.balance, matches: ["balance"] },
     { route: "/admin/operadores", label: "Usuarios", icon: SIDEBAR_ICONS.operators, matches: ["adminOperators"] },
     { route: "/admin/mensajes", label: "Mensajes", icon: SIDEBAR_ICONS.messages, matches: ["adminMessages"] },
     { route: "/perfil", label: "Perfil", icon: SIDEBAR_ICONS.profile, matches: ["profile"] },
@@ -181,6 +186,18 @@ const state = {
   operators: [],
   financeRecords: [],
   financeSummary: { income: 0, expenses: 0, balance: 0, byType: {} },
+  balance: {
+    assetsValue: 0,
+    netWorth: 0,
+    income: 0,
+    expenses: 0,
+    difference: 0,
+    byType: {},
+    records: [],
+    vehicles: { total: 0, byStatus: {}, list: [] },
+  },
+  balanceLoaded: false,
+  selectedVehicleFinanceId: "",
   sidebarCollapsed: localStorage.getItem("sidebar_collapsed") === "true",
   mobileSidebarOpen: false,
   systemMessages: readJson("admin_system_messages") || [],
@@ -194,6 +211,7 @@ const state = {
     privateVehicles: false,
     operators: false,
     finance: false,
+    balance: false,
     activeView: false,
   },
   pullToRefresh: {
@@ -259,6 +277,17 @@ const elements = {
   financeSummary: document.getElementById("financeSummary"),
   refreshFinanceButton: document.getElementById("refreshFinanceButton"),
   cancelFinanceEditButton: document.getElementById("cancelFinanceEditButton"),
+  balancePage: document.getElementById("balancePage"),
+  balanceAssetsCard: document.getElementById("balanceAssetsCard"),
+  balanceSummary: document.getElementById("balanceSummary"),
+  balanceTableBody: document.getElementById("balanceTableBody"),
+  balanceTableFoot: document.getElementById("balanceTableFoot"),
+  balanceReportMeta: document.getElementById("balanceReportMeta"),
+  refreshBalanceButton: document.getElementById("refreshBalanceButton"),
+  printBalanceButton: document.getElementById("printBalanceButton"),
+  vehicleFinanceSelect: document.getElementById("vehicleFinanceSelect"),
+  vehicleFinanceContent: document.getElementById("vehicleFinanceContent"),
+  printVehicleFinanceButton: document.getElementById("printVehicleFinanceButton"),
   publicVehicleCardTemplate: document.getElementById("publicVehicleCardTemplate"),
   privateVehicleItemTemplate: document.getElementById("privateVehicleItemTemplate"),
   operatorItemTemplate: document.getElementById("operatorItemTemplate"),
@@ -325,6 +354,10 @@ function bindEvents() {
   });
   elements.financeForm.addEventListener("input", handleFinanceFormInput);
   elements.cancelFinanceEditButton.addEventListener("click", resetFinanceForm);
+  elements.refreshBalanceButton.addEventListener("click", () => loadBalanceData({ force: true }));
+  elements.printBalanceButton.addEventListener("click", handlePrintBalance);
+  elements.vehicleFinanceSelect.addEventListener("change", handleVehicleFinanceChange);
+  elements.printVehicleFinanceButton.addEventListener("click", handlePrintVehicleFinance);
   elements.clearAdminMessagesButton.addEventListener("click", () => {
     state.systemMessages = [];
     persistMessages();
@@ -440,6 +473,7 @@ function resolveRoute(pathname) {
   if (path === "/admin/operadores") return { name: "adminOperators", access: "auth" };
   if (path === "/admin/mensajes") return { name: "adminMessages", access: "admin" };
   if (path === "/finanzas") return { name: "finance", access: "finance" };
+  if (path === "/balance") return { name: "balance", access: "balance" };
 
   const vehicleEditMatch = path.match(/^\/vehiculo\/([^/]+)\/editar$/);
   if (vehicleEditMatch) return { name: "vehicleEdit", access: "auth", params: { id: vehicleEditMatch[1] } };
@@ -503,6 +537,11 @@ function enforceAccess(route) {
   }
 
   if (route.access === "finance" && !canAccessFinance()) {
+    navigate(getDefaultPrivateRoute(), { replace: true });
+    return { redirected: true };
+  }
+
+  if (route.access === "balance" && !canViewBalance()) {
     navigate(getDefaultPrivateRoute(), { replace: true });
     return { redirected: true };
   }
@@ -571,6 +610,7 @@ function renderAppChrome(routeName) {
     adminOperators: { kicker: "Administracion", title: "Gestion de Usuarios" },
     adminMessages: { kicker: "Administracion", title: "Mensajes del sistema" },
     finance: { kicker: "Finanzas", title: "Gestion financiera" },
+    balance: { kicker: "Finanzas", title: "Balance financiero" },
     profile: { kicker: "Cuenta", title: "Perfil" },
     vehicle: { kicker: "Detalle", title: "Vehiculo" },
     vehicleEdit: { kicker: "Edicion", title: "Editar vehiculo" },
@@ -606,7 +646,9 @@ function renderAppChrome(routeName) {
 
 function renderSidebar(activeRouteName) {
   const links = (state.user ? SIDEBAR_LINKS[state.user.role] || [] : SIDEBAR_LINKS.PUBLIC).filter(
-    (link) => link.route !== "/finanzas" || canAccessFinance()
+    (link) =>
+      (link.route !== "/finanzas" || canAccessFinance()) &&
+      (link.route !== "/balance" || canViewBalance())
   );
   elements.sidebarNav.innerHTML = links
     .map((link) => {
@@ -684,6 +726,14 @@ function renderPrivateRoute(route) {
     return;
   }
 
+  if (route.name === "balance") {
+    elements.balancePage.classList.remove("hidden");
+    // Cada visita refresca el balance para mostrarlo siempre actualizado.
+    loadBalanceData({ force: true, silent: true });
+    renderBalancePage();
+    return;
+  }
+
   if (route.name === "profile") {
     elements.profilePage.classList.remove("hidden");
     renderProfilePage();
@@ -699,6 +749,7 @@ function hidePrivatePages() {
     elements.profilePage,
     elements.adminMessagesPage,
     elements.financePage,
+    elements.balancePage,
     elements.actionsPanel,
   ].forEach((page) => page.classList.add("hidden"));
 }
@@ -749,7 +800,13 @@ async function loadPublicCatalog(options = {}) {
 
 async function loadPrivateData() {
   if (!state.token) return;
-  await Promise.all([loadCurrentUser(), loadPrivateVehicles(), loadOperators(), loadFinanceData()]);
+  await Promise.all([
+    loadCurrentUser(),
+    loadPrivateVehicles(),
+    loadOperators(),
+    loadFinanceData(),
+    loadBalanceData(),
+  ]);
 }
 
 async function loadCurrentUser(options = {}) {
@@ -1628,6 +1685,10 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
   const creator = vehicle.createdBy ? `${vehicle.createdBy.name} (${formatRoleLabel(vehicle.createdBy)})` : "No registrado";
   const assignedOperator = vehicle.assignedOperator || "No registrado";
   const currentMileage = vehicle.currentMileage === null || vehicle.currentMileage === undefined ? "No registrado" : `${formatInteger(vehicle.currentMileage)} km`;
+  const purchaseValue =
+    vehicle.purchaseValue === null || vehicle.purchaseValue === undefined
+      ? "No registrado"
+      : formatMoney(vehicle.purchaseValue);
   const owner = vehicle.owner || "No registrado";
   const observations = vehicle.observations || "No registrado";
   const soatExpiry = vehicle.soatExpiry ? formatCalendarDate(vehicle.soatExpiry) : "No registrado";
@@ -1664,6 +1725,10 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
         <label>
           <span>Kilometraje actual</span>
           <input name="currentMileage" type="number" min="0" step="1" inputmode="numeric" value="${escapeAttribute(vehicle.currentMileage ?? "")}" placeholder="Ej: 125000" />
+        </label>
+        <label>
+          <span>Valor de compra / avaluo</span>
+          <input name="purchaseValue" type="number" min="0" step="1" inputmode="numeric" value="${escapeAttribute(vehicle.purchaseValue ?? "")}" placeholder="Ej: 85000000" />
         </label>
         <label>
           <span>Propietario</span>
@@ -1739,6 +1804,7 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
         ${renderDetailField("Anio", vehicle.year ? String(vehicle.year) : "No registrado")}
         ${renderDetailField("Operador asignado", assignedOperator)}
         ${renderDetailField("Kilometraje actual", currentMileage)}
+        ${renderDetailField("Valor de compra", purchaseValue)}
         ${renderDetailField("Propietario", owner)}
         ${renderDetailField("Vencimiento de SOAT", soatExpiry, complianceItems[0])}
         ${renderDetailField("Vencimiento Tecnomecanica", tecnomecanicaExpiry, complianceItems[1])}
@@ -1914,6 +1980,7 @@ function attachVehicleDetailHandlers(container, vehicle, options = {}) {
             year: numberInputToOptionalInteger(form.get("year")),
             assignedOperator: emptyToNull(form.get("assignedOperator")),
             currentMileage: numberInputToNullableInteger(form.get("currentMileage")),
+            purchaseValue: numberInputToNullableInteger(form.get("purchaseValue")),
             owner: emptyToNull(form.get("owner")),
             observations: emptyToNull(form.get("observations")),
             soatExpiry: dateInputToNullableIsoString(form.get("soatExpiry")),
@@ -2082,6 +2149,18 @@ function handleLogout() {
   state.operators = [];
   state.financeRecords = [];
   state.financeSummary = { income: 0, expenses: 0, balance: 0, byType: {} };
+  state.balance = {
+    assetsValue: 0,
+    netWorth: 0,
+    income: 0,
+    expenses: 0,
+    difference: 0,
+    byType: {},
+    records: [],
+    vehicles: { total: 0, byStatus: {}, list: [] },
+  };
+  state.balanceLoaded = false;
+  state.selectedVehicleFinanceId = "";
   localStorage.removeItem(STORAGE_KEYS.token);
   localStorage.removeItem(STORAGE_KEYS.user);
   localStorage.removeItem(STORAGE_KEYS.legacyToken);
@@ -2195,6 +2274,7 @@ async function handleCreateVehicle(event) {
         assignedOperator: emptyToUndefined(form.get("assignedOperator")),
         year: Number(form.get("year")),
         currentMileage: Number(form.get("currentMileage")),
+        purchaseValue: numberInputToOptionalInteger(form.get("purchaseValue")),
         owner: emptyToUndefined(form.get("owner")),
         soatExpiry: dateInputToIsoString(form.get("soatExpiry")),
         tecnomecanicaExpiry: dateInputToIsoString(form.get("tecnomecanicaExpiry")),
@@ -2441,6 +2521,7 @@ function handleViewFinanceRecord(recordId) {
   if (!record) return;
 
   const details = getFinanceDetailRows(record);
+  const isFlete = record.type === "FLETE";
   const modal = document.createElement("div");
   modal.className = "modal-backdrop";
   modal.innerHTML = `
@@ -2450,7 +2531,14 @@ function handleViewFinanceRecord(recordId) {
           <p class="section-kicker">${escapeHtml(getFinanceTypeLabel(record.type))}</p>
           <h3>${escapeHtml(record.concept || getFinanceTypeLabel(record.type))}</h3>
         </div>
-        <button class="button button-secondary" type="button" data-close-modal>Cerrar</button>
+        ${
+          isFlete
+            ? `<div class="toolbar">
+          <button class="button button-primary" type="button" data-print-flete>Imprimir</button>
+          <button class="button button-secondary" type="button" data-close-modal>Cerrar</button>
+        </div>`
+            : '<button class="button button-secondary" type="button" data-close-modal>Cerrar</button>'
+        }
       </div>
       <div class="finance-detail-grid">
         ${details
@@ -2467,11 +2555,84 @@ function handleViewFinanceRecord(recordId) {
     </article>
   `;
   modal.addEventListener("click", (event) => {
+    if (event.target.closest("[data-print-flete]")) {
+      printFleteVale(record);
+      return;
+    }
     if (event.target === modal || event.target.closest("[data-close-modal]")) {
       modal.remove();
     }
   });
   document.body.appendChild(modal);
+}
+
+function buildFleteValeMarkup(record) {
+  const vehicleLabel = record.vehicle
+    ? `${record.vehicle.plate} - ${record.vehicle.brand} ${record.vehicle.model}`
+    : "Sin vehiculo asociado";
+  const ref = String(record.id || "").slice(-6).toUpperCase();
+  const rows = [
+    ["Concepto", record.concept || getFinanceTypeLabel(record.type)],
+    ["Fecha", formatCalendarDate(record.date)],
+    ["Vehiculo", vehicleLabel],
+    ["Recorrido (origen y destino)", record.originDestination || "-"],
+    ["Operador", record.operatorName || "-"],
+    ["Cliente", record.client || "-"],
+    ["Valor del flete", formatMoney(record.amount)],
+    ["Gastos del operador", formatMoney(record.operatorExpenses || 0)],
+    ["Ingreso neto", formatMoney(getFinanceDisplayAmount(record))],
+    ["Observaciones", record.observations || "-"],
+    ["Registrado por", record.createdBy?.name || "-"],
+  ];
+
+  return `
+    <div class="flete-vale">
+      <div class="flete-vale-head">
+        <div>
+          <strong>GRUPO W LOGIST</strong>
+          <span>Pase de salida de vehiculo &middot; Vale de flete</span>
+        </div>
+        <div class="flete-vale-ref">
+          <span>Vale N.&ordm; ${escapeHtml(ref)}</span>
+          <span>Impreso: ${escapeHtml(new Date().toLocaleString("es-CO"))}</span>
+        </div>
+      </div>
+      <table class="flete-vale-data">
+        <tbody>
+          ${rows
+            .map(
+              ([label, value]) =>
+                `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(String(value))}</td></tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>
+      <p class="flete-vale-legend">Pase de entregado</p>
+      <div class="flete-vale-sign">
+        <div class="flete-vale-sign-line"></div>
+        <span>Firma</span>
+      </div>
+    </div>
+  `;
+}
+
+function printFleteVale(record) {
+  let area = document.getElementById("fletePrintArea");
+  if (!area) {
+    area = document.createElement("div");
+    area.id = "fletePrintArea";
+    document.body.appendChild(area);
+  }
+  area.innerHTML = buildFleteValeMarkup(record);
+
+  document.body.classList.add("printing-flete");
+  const cleanup = () => {
+    document.body.classList.remove("printing-flete");
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  window.print();
+  window.setTimeout(cleanup, 1000);
 }
 
 function getFinanceDetailRows(record) {
@@ -2671,6 +2832,353 @@ async function loadFinanceData(options = {}) {
   } finally {
     state.refreshLocks.finance = false;
   }
+}
+
+function canViewBalance() {
+  return state.user?.role === "DIRECTOR" || isPrimaryAdminUser();
+}
+
+function normalizeBalancePayload(data) {
+  const payload = data || {};
+  const vehicles = payload.vehicles || {};
+  return {
+    assetsValue: Number(payload.assetsValue || 0),
+    netWorth: Number(payload.netWorth || 0),
+    income: Number(payload.income || 0),
+    expenses: Number(payload.expenses || 0),
+    difference: Number(payload.difference || 0),
+    byType: payload.byType || {},
+    records: Array.isArray(payload.records) ? payload.records : [],
+    vehicles: {
+      total: Number(vehicles.total || 0),
+      byStatus: vehicles.byStatus || {},
+      list: Array.isArray(vehicles.list) ? vehicles.list : [],
+    },
+  };
+}
+
+async function loadBalanceData(options = {}) {
+  const { silent = false, force = false } = options;
+  if (!canViewBalance()) return;
+  if (!force && state.balanceLoaded) return;
+  if (state.refreshLocks.balance) return;
+  state.refreshLocks.balance = true;
+
+  try {
+    const data = await apiFetch("/finance/balance", { fresh: force });
+    state.balance = normalizeBalancePayload(data);
+    state.balanceLoaded = true;
+    renderCurrentRoute();
+  } catch (error) {
+    if (!silent) {
+      pushToast("error", error.message);
+    }
+  } finally {
+    state.refreshLocks.balance = false;
+  }
+}
+
+function renderBalancePage() {
+  const records = state.balance.records || [];
+  const totals = {
+    income: state.balance.income || 0,
+    expenses: state.balance.expenses || 0,
+    difference: state.balance.difference || 0,
+  };
+  renderBalanceSummary(totals);
+  renderBalanceTable(records, totals);
+  renderBalanceReportMeta(records.length);
+  renderVehicleFinanceCard();
+}
+
+function renderBalanceSummary(totals) {
+  const diffNegative = (totals.difference || 0) < 0;
+
+  elements.balanceAssetsCard.innerHTML = `
+    <article class="balance-assets-card">
+      <img class="balance-assets-car" src="/media/esquem_car.png" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+      <div class="balance-assets-content">
+        <span class="balance-assets-label">Total de activos</span>
+        <strong class="balance-assets-value">${escapeHtml(formatMoney(state.balance.assetsValue || 0))}</strong>
+        <small>Patrimonio neto del total de vehiculos</small>
+      </div>
+    </article>
+  `;
+
+  elements.balanceSummary.innerHTML = `
+    <article class="stat-card finance-summary-card finance-summary-income">
+      <span>Total de ingresos</span>
+      <strong>${escapeHtml(formatMoney(totals.income || 0))}</strong>
+      <small>Historico completo</small>
+    </article>
+    <article class="stat-card finance-summary-card finance-summary-expenses">
+      <span>Total de gastos</span>
+      <strong>${escapeHtml(formatMoney(totals.expenses || 0))}</strong>
+      <small>Historico completo</small>
+    </article>
+    <article class="stat-card finance-summary-card ${diffNegative ? "balance-negative" : "finance-summary-balance"}">
+      <span>Diferencia</span>
+      <strong>${escapeHtml(formatMoney(totals.difference || 0))}</strong>
+      <small>Ingresos menos gastos</small>
+    </article>
+  `;
+}
+
+function populateVehicleFinanceOptions() {
+  const select = elements.vehicleFinanceSelect;
+  const vehicles = state.balance.vehicles.list || [];
+  const signature = vehicles.map((vehicle) => vehicle.id).join("|");
+  if (select.dataset.signature !== signature) {
+    select.innerHTML = [
+      '<option value="">Selecciona un vehiculo...</option>',
+      ...vehicles.map(
+        (vehicle) =>
+          `<option value="${escapeAttribute(vehicle.id)}">${escapeHtml(
+            `${vehicle.plate} - ${vehicle.brand} ${vehicle.model}`
+          )}</option>`
+      ),
+    ].join("");
+    select.dataset.signature = signature;
+  }
+
+  const stillExists = vehicles.some((vehicle) => vehicle.id === state.selectedVehicleFinanceId);
+  if (!stillExists) {
+    state.selectedVehicleFinanceId = "";
+  }
+  select.value = state.selectedVehicleFinanceId;
+}
+
+function getVehicleFinanceRecords(vehicleId) {
+  return state.balance.records
+    .filter((record) => record.vehicleId === vehicleId || record.vehicle?.id === vehicleId)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+function handleVehicleFinanceChange() {
+  state.selectedVehicleFinanceId = elements.vehicleFinanceSelect.value || "";
+  renderVehicleFinanceCard();
+}
+
+function renderVehicleFinanceCard() {
+  populateVehicleFinanceOptions();
+
+  const vehicleId = state.selectedVehicleFinanceId;
+  if (!vehicleId) {
+    elements.vehicleFinanceContent.className = "balance-muted";
+    elements.vehicleFinanceContent.innerHTML =
+      "Selecciona un vehiculo para ver su historial financiero.";
+    return;
+  }
+
+  const vehicle = (state.balance.vehicles.list || []).find((item) => item.id === vehicleId);
+  const records = getVehicleFinanceRecords(vehicleId);
+
+  const totals = records.reduce(
+    (accumulator, record) => {
+      const amount = Number(getFinanceDisplayAmount(record) || 0);
+      if (isFinanceIncome(record.type)) {
+        accumulator.income += amount;
+      } else {
+        accumulator.expenses += amount;
+      }
+      accumulator.difference = accumulator.income - accumulator.expenses;
+      return accumulator;
+    },
+    { income: 0, expenses: 0, difference: 0 }
+  );
+
+  const vehicleTitle = vehicle
+    ? `${vehicle.plate} - ${vehicle.brand} ${vehicle.model}`
+    : "Vehiculo";
+  const statusMeta = vehicle ? getStatusMeta(vehicle.currentStatus) : null;
+  const diffNegative = totals.difference < 0;
+
+  const headItems = [
+    ["Placa", vehicle?.plate || "No registrado"],
+    ["Marca", vehicle?.brand || "No registrado"],
+    ["Modelo", vehicle?.model || "No registrado"],
+    ["Anio", vehicle?.year ? String(vehicle.year) : "No registrado"],
+    ["Estado", statusMeta ? statusMeta.label : "No registrado"],
+  ]
+    .map(
+      ([label, value]) =>
+        `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`
+    )
+    .join("");
+
+  const rows = records
+    .map((record) => {
+      const isIncome = isFinanceIncome(record.type);
+      const amount = getFinanceDisplayAmount(record);
+      return `
+        <tr>
+          <td data-label="Fecha">${escapeHtml(formatCalendarDate(record.date))}</td>
+          <td data-label="Tipo">${escapeHtml(getFinanceTypeLabel(record.type))}</td>
+          <td data-label="Concepto">${escapeHtml(record.concept || "Sin concepto")}</td>
+          <td data-label="Cliente">${escapeHtml(record.client || "-")}</td>
+          <td data-label="Clase"><span class="balance-class ${isIncome ? "is-income" : "is-expense"}">${isIncome ? "Ingreso" : "Gasto"}</span></td>
+          <td class="balance-amount-col" data-label="Monto">${escapeHtml(formatMoney(amount))}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const tableBody = records.length
+    ? rows
+    : '<tr><td colspan="6" class="balance-empty">Este vehiculo no tiene movimientos financieros registrados.</td></tr>';
+
+  const tableFoot = records.length
+    ? `
+      <tr class="balance-total-row">
+        <th colspan="5">Total de ingresos</th>
+        <td class="balance-amount-col">${escapeHtml(formatMoney(totals.income || 0))}</td>
+      </tr>
+      <tr class="balance-total-row">
+        <th colspan="5">Total de gastos</th>
+        <td class="balance-amount-col">${escapeHtml(formatMoney(totals.expenses || 0))}</td>
+      </tr>
+      <tr class="balance-total-row balance-total-diff">
+        <th colspan="5">Diferencia</th>
+        <td class="balance-amount-col">${escapeHtml(formatMoney(totals.difference || 0))}</td>
+      </tr>
+    `
+    : "";
+
+  elements.vehicleFinanceContent.className = "vehicle-finance-body";
+  elements.vehicleFinanceContent.innerHTML = `
+    <div class="balance-print-only balance-report-head">
+      <h2>Resumen financiero del vehiculo - GRUPO W LOGIST</h2>
+      <p>Generado: ${escapeHtml(new Date().toLocaleString("es-CO"))}   |   Vehiculo: ${escapeHtml(vehicleTitle)}   |   Movimientos: ${records.length}</p>
+    </div>
+
+    <div class="vehicle-finance-head">${headItems}</div>
+
+    <div class="summary-row vehicle-finance-summary">
+      <article class="stat-card finance-summary-card finance-summary-income">
+        <span>Ingresos del vehiculo</span>
+        <strong>${escapeHtml(formatMoney(totals.income || 0))}</strong>
+      </article>
+      <article class="stat-card finance-summary-card finance-summary-expenses">
+        <span>Gastos del vehiculo</span>
+        <strong>${escapeHtml(formatMoney(totals.expenses || 0))}</strong>
+      </article>
+      <article class="stat-card finance-summary-card ${diffNegative ? "balance-negative" : "finance-summary-balance"}">
+        <span>Diferencia</span>
+        <strong>${escapeHtml(formatMoney(totals.difference || 0))}</strong>
+      </article>
+      <article class="stat-card finance-summary-card">
+        <span>Movimientos</span>
+        <strong>${escapeHtml(String(records.length))}</strong>
+      </article>
+    </div>
+
+    <div class="balance-table-wrap">
+      <table class="balance-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Concepto</th>
+            <th>Cliente</th>
+            <th>Clase</th>
+            <th class="balance-amount-col">Monto</th>
+          </tr>
+        </thead>
+        <tbody>${tableBody}</tbody>
+        <tfoot>${tableFoot}</tfoot>
+      </table>
+    </div>
+  `;
+}
+
+function handlePrintVehicleFinance() {
+  if (!state.selectedVehicleFinanceId) {
+    pushToast("info", "Selecciona un vehiculo antes de imprimir.");
+    return;
+  }
+
+  document.body.classList.add("printing-vehicle");
+  const cleanup = () => {
+    document.body.classList.remove("printing-vehicle");
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  window.print();
+  window.setTimeout(cleanup, 1000);
+}
+
+function renderBalanceTable(records, totals) {
+  if (!records.length) {
+    elements.balanceTableBody.innerHTML =
+      '<tr><td colspan="7" class="balance-empty">Todavia no hay movimientos financieros registrados.</td></tr>';
+    elements.balanceTableFoot.innerHTML = "";
+    return;
+  }
+
+  // Orden cronologico: del primer movimiento al ultimo.
+  const orderedRecords = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  elements.balanceTableBody.innerHTML = orderedRecords
+    .map((record) => {
+      const isIncome = isFinanceIncome(record.type);
+      const amount = getFinanceDisplayAmount(record);
+      const vehicleLabel = record.vehicle
+        ? `${record.vehicle.plate} - ${record.vehicle.brand} ${record.vehicle.model}`
+        : "Sin vehiculo";
+      return `
+        <tr>
+          <td data-label="Fecha">${escapeHtml(formatCalendarDate(record.date))}</td>
+          <td data-label="Tipo">${escapeHtml(getFinanceTypeLabel(record.type))}</td>
+          <td data-label="Concepto">${escapeHtml(record.concept || "Sin concepto")}</td>
+          <td data-label="Vehiculo">${escapeHtml(vehicleLabel)}</td>
+          <td data-label="Cliente">${escapeHtml(record.client || "-")}</td>
+          <td data-label="Clase"><span class="balance-class ${isIncome ? "is-income" : "is-expense"}">${isIncome ? "Ingreso" : "Gasto"}</span></td>
+          <td class="balance-amount-col" data-label="Monto">${escapeHtml(formatMoney(amount))}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  elements.balanceTableFoot.innerHTML = `
+    <tr class="balance-total-row">
+      <th colspan="6">Total de ingresos</th>
+      <td class="balance-amount-col">${escapeHtml(formatMoney(totals.income || 0))}</td>
+    </tr>
+    <tr class="balance-total-row">
+      <th colspan="6">Total de gastos</th>
+      <td class="balance-amount-col">${escapeHtml(formatMoney(totals.expenses || 0))}</td>
+    </tr>
+    <tr class="balance-total-row balance-total-diff">
+      <th colspan="6">Diferencia</th>
+      <td class="balance-amount-col">${escapeHtml(formatMoney(totals.difference || 0))}</td>
+    </tr>
+  `;
+}
+
+function renderBalanceReportMeta(count) {
+  const parts = [
+    `Generado: ${new Date().toLocaleString("es-CO")}`,
+    "Registro: historico completo",
+    `Movimientos: ${count}`,
+  ];
+
+  elements.balanceReportMeta.textContent = parts.join("   |   ");
+}
+
+function handlePrintBalance() {
+  if (!state.balanceLoaded) {
+    pushToast("info", "Espera a que cargue la informacion del balance.");
+    return;
+  }
+
+  document.body.classList.add("printing-balance");
+  const cleanup = () => {
+    document.body.classList.remove("printing-balance");
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  window.print();
+  window.setTimeout(cleanup, 1000);
 }
 
 function canvasToBlob(canvas, mimeType, quality) {
