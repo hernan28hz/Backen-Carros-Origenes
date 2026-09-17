@@ -9,7 +9,7 @@ El proyecto usa Node.js, Express, Prisma y MySQL. Prisma esta configurado con `e
 - Catalogo publico de vehiculos visibles con imagen, estado, marca, modelo y operador.
 - Panel privado por roles para administrar vehiculos, usuarios, finanzas y perfil.
 - Registro de vehiculos con placa, marca, modelo, anio, operador asignado, kilometraje, propietario, vencimientos, tramites, multas, VIN, observaciones, estado inicial e imagen.
-- Detalle de vehiculo con informacion en este orden: Marca, Modelo, Anio, Operador asignado, Kilometraje actual, Propietario, Vencimiento de SOAT, Vencimiento de tecnomecanica, Vencimiento del impuesto vehicular, Tramites pendientes o multas, VIN, Creado por y Observaciones.
+- Detalle de vehiculo con informacion en este orden: Marca, Linea, Modelo, Operador asignado, Kilometraje actual, Propietario, Vencimiento de SOAT, Vencimiento de tecnomecanica, Vencimiento del impuesto vehicular, Tramites pendientes o multas, VIN, Creado por y Observaciones.
 - Edicion de datos administrativos del vehiculo y actualizacion de estado.
 - Carga, visualizacion y eliminacion de fotos por vehiculo.
 - Historial de cambios administrativos y de estados.

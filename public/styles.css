@@ -1986,6 +1986,18 @@ textarea {
   display: none;
 }
 
+.print-header-logo {
+  margin: 0 0 10px;
+}
+
+.print-header-logo img {
+  display: block;
+  height: 46px;
+  width: auto;
+  max-width: 220px;
+  object-fit: contain;
+}
+
 .balance-report-head h2 {
   margin: 0 0 4px;
   font-size: 20px;
@@ -2111,6 +2123,11 @@ textarea {
 .balance-class.is-expense {
   background: #fff7eb;
   color: #9a6212;
+}
+
+.balance-derived-row td {
+  color: var(--text-secondary);
+  font-style: italic;
 }
 
 .balance-table tfoot th {
@@ -2376,6 +2393,14 @@ textarea {
     border-bottom: 2px solid #000 !important;
     break-after: avoid;
   }
+  body.printing-balance .print-header-logo,
+  body.printing-vehicle .print-header-logo {
+    margin: 0 0 8px !important;
+  }
+  body.printing-balance .print-header-logo img,
+  body.printing-vehicle .print-header-logo img {
+    height: 38px !important;
+  }
   body.printing-balance .balance-report-head h2,
   body.printing-vehicle .balance-report-head h2 {
     margin: 0 0 2px !important;
@@ -2582,20 +2607,22 @@ textarea {
   }
 
   /* Anchos de columna para aprovechar el ancho de la hoja */
-  body.printing-balance .balance-table-card .balance-table thead th:nth-child(1) { width: 10%; }
-  body.printing-balance .balance-table-card .balance-table thead th:nth-child(2) { width: 12%; }
-  body.printing-balance .balance-table-card .balance-table thead th:nth-child(3) { width: 25%; }
-  body.printing-balance .balance-table-card .balance-table thead th:nth-child(4) { width: 21%; }
-  body.printing-balance .balance-table-card .balance-table thead th:nth-child(5) { width: 14%; }
-  body.printing-balance .balance-table-card .balance-table thead th:nth-child(6) { width: 8%; }
-  body.printing-balance .balance-table-card .balance-table thead th:nth-child(7) { width: 10%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(1) { width: 8%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(2) { width: 10%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(3) { width: 21%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(4) { width: 18%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(5) { width: 12%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(6) { width: 12%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(7) { width: 8%; }
+  body.printing-balance .balance-table-card .balance-table thead th:nth-child(8) { width: 11%; }
 
-  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(1) { width: 12%; }
-  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(2) { width: 16%; }
-  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(3) { width: 34%; }
-  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(4) { width: 18%; }
-  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(5) { width: 10%; }
+  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(1) { width: 10%; }
+  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(2) { width: 14%; }
+  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(3) { width: 26%; }
+  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(4) { width: 14%; }
+  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(5) { width: 14%; }
   body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(6) { width: 10%; }
+  body.printing-vehicle .vehicle-finance-body .balance-table thead th:nth-child(7) { width: 12%; }
 }
 
 /* ===== Vale de flete (impresion desde el mini resumen de Finanzas) ===== */
@@ -2622,6 +2649,14 @@ textarea {
     margin: 0 auto;
     font-size: 10pt;
     color: #000;
+  }
+
+  .flete-vale .print-header-logo {
+    margin: 0 0 8px;
+  }
+
+  .flete-vale .print-header-logo img {
+    height: 34px;
   }
 
   .flete-vale-head {

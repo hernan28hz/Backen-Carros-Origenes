@@ -5,8 +5,8 @@ const { createAuditLog } = require("../../services/auditLog");
 
 const ADMIN_DETAIL_FIELDS = {
   brand: "Marca",
-  model: "Modelo",
-  year: "Anio",
+  model: "Línea",
+  year: "Modelo",
   vin: "VIN",
   assignedOperator: "Operador asignado",
   owner: "Propietario",

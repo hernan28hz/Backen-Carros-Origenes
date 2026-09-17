@@ -372,6 +372,9 @@
 
             <div id="balancePrintArea" class="balance-print-area">
               <div class="balance-print-only balance-report-head">
+                <div class="print-header-logo">
+                  <img src="/media/iconoWblanco%20y%20negro.png" alt="Grupo W Logist" />
+                </div>
                 <h2>Balance financiero - GRUPO W LOGIST</h2>
                 <p id="balanceReportMeta"></p>
               </div>
@@ -400,6 +403,7 @@
                         <th>Concepto</th>
                         <th>Vehiculo</th>
                         <th>Cliente</th>
+                        <th>Operador</th>
                         <th>Clase</th>
                         <th class="balance-amount-col">Monto</th>
                       </tr>
@@ -480,11 +484,11 @@
                     <input name="brand" placeholder="Toyota" required />
                   </label>
                   <label>
-                    <span>Modelo</span>
+                    <span>Línea</span>
                     <input name="model" placeholder="Corolla" required />
                   </label>
                   <label>
-                    <span>Anio</span>
+                    <span>Modelo</span>
                     <input name="year" type="number" min="1900" max="2100" value="2024" required />
                   </label>
                   <label>

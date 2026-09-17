@@ -1711,11 +1711,11 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
           <input name="brand" value="${escapeAttribute(vehicle.brand || "")}" placeholder="Toyota" required />
         </label>
         <label>
-          <span>Modelo</span>
+          <span>Línea</span>
           <input name="model" value="${escapeAttribute(vehicle.model || "")}" placeholder="Corolla" required />
         </label>
         <label>
-          <span>Anio</span>
+          <span>Modelo</span>
           <input name="year" type="number" min="1900" max="2100" value="${escapeAttribute(vehicle.year ?? "")}" required />
         </label>
         <label>
@@ -1800,8 +1800,8 @@ function buildVehicleDetailMarkup(vehicle, options = {}) {
 
       <div class="detail-grid">
         ${renderDetailField("Marca", vehicle.brand || "No registrado")}
-        ${renderDetailField("Modelo", vehicle.model || "No registrado")}
-        ${renderDetailField("Anio", vehicle.year ? String(vehicle.year) : "No registrado")}
+        ${renderDetailField("Línea", vehicle.model || "No registrado")}
+        ${renderDetailField("Modelo", vehicle.year ? String(vehicle.year) : "No registrado")}
         ${renderDetailField("Operador asignado", assignedOperator)}
         ${renderDetailField("Kilometraje actual", currentMileage)}
         ${renderDetailField("Valor de compra", purchaseValue)}
@@ -2587,6 +2587,9 @@ function buildFleteValeMarkup(record) {
 
   return `
     <div class="flete-vale">
+      <div class="print-header-logo">
+        <img src="/media/iconoWblanco%20y%20negro.png" alt="Grupo W Logist" />
+      </div>
       <div class="flete-vale-head">
         <div>
           <strong>GRUPO W LOGIST</strong>
@@ -2973,19 +2976,30 @@ function renderVehicleFinanceCard() {
   const vehicle = (state.balance.vehicles.list || []).find((item) => item.id === vehicleId);
   const records = getVehicleFinanceRecords(vehicleId);
 
+  // Ingresos brutos = valor total facturado (ej. flete completo, antes de
+  // descontar el gasto del operador). Los gastos del operador se registran
+  // aparte para que el resumen refleje cuanto genero y cuanto costo realmente
+  // cada vehiculo, en lugar de mezclar ambos en un solo "ingreso" neto.
   const totals = records.reduce(
     (accumulator, record) => {
-      const amount = Number(getFinanceDisplayAmount(record) || 0);
+      const grossAmount = Number(record.amount || 0);
+      const operatorExpense = Number(record.operatorExpenses || 0);
+
       if (isFinanceIncome(record.type)) {
-        accumulator.income += amount;
+        accumulator.grossIncome += grossAmount;
+        accumulator.operatorExpenses += operatorExpense;
       } else {
-        accumulator.expenses += amount;
+        accumulator.otherExpenses += grossAmount;
       }
-      accumulator.difference = accumulator.income - accumulator.expenses;
+
       return accumulator;
     },
-    { income: 0, expenses: 0, difference: 0 }
+    { grossIncome: 0, operatorExpenses: 0, otherExpenses: 0 }
   );
+
+  totals.totalExpenses = totals.operatorExpenses + totals.otherExpenses;
+  totals.netIncome = totals.grossIncome - totals.operatorExpenses;
+  totals.difference = totals.grossIncome - totals.totalExpenses;
 
   const vehicleTitle = vehicle
     ? `${vehicle.plate} - ${vehicle.brand} ${vehicle.model}`
@@ -2996,8 +3010,8 @@ function renderVehicleFinanceCard() {
   const headItems = [
     ["Placa", vehicle?.plate || "No registrado"],
     ["Marca", vehicle?.brand || "No registrado"],
-    ["Modelo", vehicle?.model || "No registrado"],
-    ["Anio", vehicle?.year ? String(vehicle.year) : "No registrado"],
+    ["Línea", vehicle?.model || "No registrado"],
+    ["Modelo", vehicle?.year ? String(vehicle.year) : "No registrado"],
     ["Estado", statusMeta ? statusMeta.label : "No registrado"],
   ]
     .map(
@@ -3007,38 +3021,70 @@ function renderVehicleFinanceCard() {
     .join("");
 
   const rows = records
-    .map((record) => {
+    .flatMap((record) => {
       const isIncome = isFinanceIncome(record.type);
-      const amount = getFinanceDisplayAmount(record);
-      return `
+      const grossAmount = Number(record.amount || 0);
+      const operatorExpense = Number(record.operatorExpenses || 0);
+      const dateLabel = escapeHtml(formatCalendarDate(record.date));
+      const operatorLabel = escapeHtml(record.operatorName || "-");
+
+      const mainRow = `
         <tr>
-          <td data-label="Fecha">${escapeHtml(formatCalendarDate(record.date))}</td>
+          <td data-label="Fecha">${dateLabel}</td>
           <td data-label="Tipo">${escapeHtml(getFinanceTypeLabel(record.type))}</td>
           <td data-label="Concepto">${escapeHtml(record.concept || "Sin concepto")}</td>
           <td data-label="Cliente">${escapeHtml(record.client || "-")}</td>
+          <td data-label="Operador">${operatorLabel}</td>
           <td data-label="Clase"><span class="balance-class ${isIncome ? "is-income" : "is-expense"}">${isIncome ? "Ingreso" : "Gasto"}</span></td>
-          <td class="balance-amount-col" data-label="Monto">${escapeHtml(formatMoney(amount))}</td>
+          <td class="balance-amount-col" data-label="Monto">${escapeHtml(formatMoney(grossAmount))}</td>
         </tr>
       `;
+
+      // El gasto del operador vive en el mismo registro de ingreso (no es un
+      // movimiento aparte en Finanzas), pero debe verse como un gasto del
+      // vehiculo aqui para que el resumen no lo oculte dentro del ingreso neto.
+      if (!operatorExpense) return [mainRow];
+
+      const operatorRow = `
+        <tr class="balance-derived-row">
+          <td data-label="Fecha">${dateLabel}</td>
+          <td data-label="Tipo">Gastos del operador</td>
+          <td data-label="Concepto">${escapeHtml(`Gastos del operador - ${record.concept || getFinanceTypeLabel(record.type)}`)}</td>
+          <td data-label="Cliente">${escapeHtml(record.client || "-")}</td>
+          <td data-label="Operador">${operatorLabel}</td>
+          <td data-label="Clase"><span class="balance-class is-expense">Gasto</span></td>
+          <td class="balance-amount-col" data-label="Monto">${escapeHtml(formatMoney(operatorExpense))}</td>
+        </tr>
+      `;
+
+      return [mainRow, operatorRow];
     })
     .join("");
 
   const tableBody = records.length
     ? rows
-    : '<tr><td colspan="6" class="balance-empty">Este vehiculo no tiene movimientos financieros registrados.</td></tr>';
+    : '<tr><td colspan="7" class="balance-empty">Este vehiculo no tiene movimientos financieros registrados.</td></tr>';
 
   const tableFoot = records.length
     ? `
       <tr class="balance-total-row">
-        <th colspan="5">Total de ingresos</th>
-        <td class="balance-amount-col">${escapeHtml(formatMoney(totals.income || 0))}</td>
+        <th colspan="6">Ingresos brutos</th>
+        <td class="balance-amount-col">${escapeHtml(formatMoney(totals.grossIncome || 0))}</td>
       </tr>
       <tr class="balance-total-row">
-        <th colspan="5">Total de gastos</th>
-        <td class="balance-amount-col">${escapeHtml(formatMoney(totals.expenses || 0))}</td>
+        <th colspan="6">Gastos del operador</th>
+        <td class="balance-amount-col">${escapeHtml(formatMoney(totals.operatorExpenses || 0))}</td>
+      </tr>
+      <tr class="balance-total-row">
+        <th colspan="6">Otros gastos del vehiculo</th>
+        <td class="balance-amount-col">${escapeHtml(formatMoney(totals.otherExpenses || 0))}</td>
+      </tr>
+      <tr class="balance-total-row">
+        <th colspan="6">Total de gastos</th>
+        <td class="balance-amount-col">${escapeHtml(formatMoney(totals.totalExpenses || 0))}</td>
       </tr>
       <tr class="balance-total-row balance-total-diff">
-        <th colspan="5">Diferencia</th>
+        <th colspan="6">Diferencia</th>
         <td class="balance-amount-col">${escapeHtml(formatMoney(totals.difference || 0))}</td>
       </tr>
     `
@@ -3047,6 +3093,9 @@ function renderVehicleFinanceCard() {
   elements.vehicleFinanceContent.className = "vehicle-finance-body";
   elements.vehicleFinanceContent.innerHTML = `
     <div class="balance-print-only balance-report-head">
+      <div class="print-header-logo">
+        <img src="/media/iconoWblanco%20y%20negro.png" alt="Grupo W Logist" />
+      </div>
       <h2>Resumen financiero del vehiculo - GRUPO W LOGIST</h2>
       <p>Generado: ${escapeHtml(new Date().toLocaleString("es-CO"))}   |   Vehiculo: ${escapeHtml(vehicleTitle)}   |   Movimientos: ${records.length}</p>
     </div>
@@ -3056,11 +3105,11 @@ function renderVehicleFinanceCard() {
     <div class="summary-row vehicle-finance-summary">
       <article class="stat-card finance-summary-card finance-summary-income">
         <span>Ingresos del vehiculo</span>
-        <strong>${escapeHtml(formatMoney(totals.income || 0))}</strong>
+        <strong>${escapeHtml(formatMoney(totals.grossIncome || 0))}</strong>
       </article>
       <article class="stat-card finance-summary-card finance-summary-expenses">
         <span>Gastos del vehiculo</span>
-        <strong>${escapeHtml(formatMoney(totals.expenses || 0))}</strong>
+        <strong>${escapeHtml(formatMoney(totals.totalExpenses || 0))}</strong>
       </article>
       <article class="stat-card finance-summary-card ${diffNegative ? "balance-negative" : "finance-summary-balance"}">
         <span>Diferencia</span>
@@ -3080,6 +3129,7 @@ function renderVehicleFinanceCard() {
             <th>Tipo</th>
             <th>Concepto</th>
             <th>Cliente</th>
+            <th>Operador</th>
             <th>Clase</th>
             <th class="balance-amount-col">Monto</th>
           </tr>
@@ -3110,7 +3160,7 @@ function handlePrintVehicleFinance() {
 function renderBalanceTable(records, totals) {
   if (!records.length) {
     elements.balanceTableBody.innerHTML =
-      '<tr><td colspan="7" class="balance-empty">Todavia no hay movimientos financieros registrados.</td></tr>';
+      '<tr><td colspan="8" class="balance-empty">Todavia no hay movimientos financieros registrados.</td></tr>';
     elements.balanceTableFoot.innerHTML = "";
     return;
   }
@@ -3132,6 +3182,7 @@ function renderBalanceTable(records, totals) {
           <td data-label="Concepto">${escapeHtml(record.concept || "Sin concepto")}</td>
           <td data-label="Vehiculo">${escapeHtml(vehicleLabel)}</td>
           <td data-label="Cliente">${escapeHtml(record.client || "-")}</td>
+          <td data-label="Operador">${escapeHtml(record.operatorName || "-")}</td>
           <td data-label="Clase"><span class="balance-class ${isIncome ? "is-income" : "is-expense"}">${isIncome ? "Ingreso" : "Gasto"}</span></td>
           <td class="balance-amount-col" data-label="Monto">${escapeHtml(formatMoney(amount))}</td>
         </tr>
@@ -3141,15 +3192,15 @@ function renderBalanceTable(records, totals) {
 
   elements.balanceTableFoot.innerHTML = `
     <tr class="balance-total-row">
-      <th colspan="6">Total de ingresos</th>
+      <th colspan="7">Total de ingresos</th>
       <td class="balance-amount-col">${escapeHtml(formatMoney(totals.income || 0))}</td>
     </tr>
     <tr class="balance-total-row">
-      <th colspan="6">Total de gastos</th>
+      <th colspan="7">Total de gastos</th>
       <td class="balance-amount-col">${escapeHtml(formatMoney(totals.expenses || 0))}</td>
     </tr>
     <tr class="balance-total-row balance-total-diff">
-      <th colspan="6">Diferencia</th>
+      <th colspan="7">Diferencia</th>
       <td class="balance-amount-col">${escapeHtml(formatMoney(totals.difference || 0))}</td>
     </tr>
   `;
