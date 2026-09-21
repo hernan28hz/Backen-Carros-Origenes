@@ -31,15 +31,20 @@
     "express": "^5.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
-    "mariadb": "^3.4.5",
-    "morgan": "^1.11.0",
-    "multer": "^2.2.0",
-    "nodemailer": "^9.0.3",
-    "sharp": "^0.35.3",
+    "mariadb": "^3.4.7",
+    "morgan": "^1.12.1",
+    "multer": "^2.4.0",
+    "nodemailer": "^10.0.10",
+    "sharp": "^0.35.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "nodemon": "^3.1.14",
     "prisma": "^6.19.3"
+  },
+  "overrides": {
+    "mariadb": "^3.4.7",
+    "deepmerge-ts": "^8.0.2",
+    "qs": "^6.16.0"
   }
 }
